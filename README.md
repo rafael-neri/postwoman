@@ -1,93 +1,244 @@
-# postwoman
+<div align="center">
+  <h2 style="font-weight: bold">Postwoman</h2>
+  <p>
+    <b>Um Cliente Web rápido e gratuito</b>
+  </p>
+  <p>
+     <i>Alternativa ao Postman - Ajuda você a testar APIs de forma rápida e prática, salvando seu precioso tempo de desenvolvimento</i>
+  </p>
+  <p>
+  </p>
+</div>
+
+---
+
+## Acessar 🚀
+[Postwoman Web Client](#)
+
+## Recursos ✨
+
+❤️ **Leveza**: Criado com um interface minimalista.
+
+⚡️ **Rapidez**: Envia requisições e obtem respotas em tempo real.
+
+**Métodos suportados:**
+
+`GET`, `HEAD`, `POST`, `PUT`, `DELETE`, `CONNECT`, `OPTIONS` , `TRACE`, `PATCH`
+
+**Tema:**
+
+- Escolha seu tema: Escuro(padrão) ou Claro
+- Escolha o esquema de cores: Verde (padrão), Amarelo, Rosa, Vermelho, Roxo, Laranja, Ciano ou Azul
+- Toggle multi-colored headings
+
+_As customizações de tema são salvas localmente na sessão do navegador_
+
+🚀 **Requisição**: Obter instantaneamente a resposta de um _endpoint_.
+
+- Escolha um `Método`
+- Forneça o `Endereço da URL`
+- Clique em `Enviar`
+
+**Mais Funcionalidades:**
+
+- Gerar/copiar código da requisição para `JavaScript XHR`, `Fetch` e `cURL`
+- Importar `cURL`
+- Descrição das requisições
+
+🔌 **WebSocket**: Establish full-duplex communication channels over a single TCP connection.
+
+- Send and receive data
+- Basic and Bearer Token authentication
+
+📡 **Server Sent Events**: Receive a stream of updates from a server over a HTTP connection without resorting to polling.
+
+🌩 **Socket.IO**: Send and Receive data with SocketIO server.
+
+🦟 **MQTT**: Subscribe and Publish to topics of a MQTT Broker.
+
+🔮 **GraphQL**: GraphQL is a query language for APIs and a runtime for fulfilling those queries with your existing data.
+
+- Set endpoint and get schemas
+- Multi-column docs
+- Set custom request headers
+- Query schema
+- Get query response
+
+🔐 **Authentication**: Allows to identify the end user.
+
+**Types:**
+
+- None
+- Basic
+- Bearer Token
+- OAuth 2.0
+- OIDC Access Token/PKCE
+
+📢 **Headers**: Describes the format the body of your request is being sent as.
+
+📫 **Parameters**: Use request parameters to set varying parts in simulated requests.
+
+📃 **Request Body**: Used to send and receive data via the REST API.
+
+**Options:**
+
+- Set `Content Type`
+- Add or remove Parameter list
+- Toggle between key-value and RAW input parameter list
+
+👋 **Responses**: Contains the status line, headers and the message/response body.
+
+- Copy response to clipboard
+- Download response as a file
+- View preview of HTML responses
+
+⏰ **History**: Request entries are synced with cloud / local session storage to restore with a single click.
+
+📁 **Collections**: Keep your API requests organized with collections and folders. Reuse them with a single click.
+
+_Collections are synced with cloud / local session storage_
+
+🌐 **Proxy**: Enable Proxy Mode from Settings to access blocked APIs.
+
+**Features:**
+
+- Hide your IP address
+- Fixes [`CORS`](https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS) (Cross Origin Resource Sharing) issues
+- Access APIs served in non-HTTPS (`http://`)
+- Use custom Proxy URL
+
+_Official Postwoman Proxy is hosted by Apollo Software - **[Privacy Policy](https://apollosoftware.xyz/legal/postwoman)**_
+
+📜 **Pre-Request Scripts β**: Snippets of code associated with a request that are executed before the request is sent.
+
+**Use-cases:**
+
+- Include timestamp in the request headers
+- Send a random alphanumeric string in the URL parameters
+
+📄 **API Documentation**: Create and share dynamic API documentation easily, quickly.
+
+**Usage:**
+
+1. Add your requests to Collections and Folders
+2. Export Collections and easily share your APIs with the rest of your team
+3. Import Collections and Generate Documentation on-the-go
+
+⌨️ **Keyboard Shortcuts**: Optimized for efficiency.
+
+**Shortcuts:**
+
+- Send/Cancel Request <kbd>Ctrl</kbd> + <kbd>G</kbd>
+- Save to Collections <kbd>Ctrl</kbd> + <kbd>S</kbd>
+- Copy Request Link <kbd>Ctrl</kbd> + <kbd>K</kbd>
+- Reset Request <kbd>Ctrl</kbd> + <kbd>L</kbd>
+
+  > **Extensions fixes `CORS` issues.**
+
+✅ **Post-Request Tests β**: Write tests associated with a request that are executed after the request response.
+
+**Use-cases:**
+
+- Check the status code as an integer
+- Filter response headers
+- Parse the response data
+
+🌱 **Environments** : Environment variables allow you to store and reuse values in your requests and scripts.
+
+**Use-cases:**
+
+- By storing a value in a variable, you can reference it throughout your request section
+- If you need to update the value, you only have to change it in one place
+- Using variables increases your ability to work efficiently and minimizes the likelihood of error
 
 
 
-## Getting started
+## Usage 💡
 
-To make it easy for you to get started with GitLab, here's a list of recommended next steps.
+1. Choose `method`
+2. Enter `URL`
+3. Send request
+4. Get response
 
-Already a pro? Just edit this README.md and make it your own. Want to make it easy? [Use the template at the bottom](#editing-this-readme)!
+## Criado utilizando 🔧
 
-## Add your files
+- HTML
+- CSS
+- JavaScript (para as mágica)
+- [Vue](https://vuejs.org/)
+- [Nuxt](https://nuxtjs.org/)
 
-- [ ] [Create](https://gitlab.com/-/experiment/new_project_readme_content:eb245805bb11626defe962ac4aebd8b8?https://docs.gitlab.com/ee/user/project/repository/web_editor.html#create-a-file) or [upload](https://gitlab.com/-/experiment/new_project_readme_content:eb245805bb11626defe962ac4aebd8b8?https://docs.gitlab.com/ee/user/project/repository/web_editor.html#upload-a-file) files
-- [ ] [Add files using the command line](https://gitlab.com/-/experiment/new_project_readme_content:eb245805bb11626defe962ac4aebd8b8?https://docs.gitlab.com/ee/gitlab-basics/add-file.html#add-a-file-using-the-command-line) or push an existing Git repository with the following command:
+## Developing 👷
 
+0. Update [`.env.example`](https://github.com/liyasthomas/postwoman/blob/master/.env.example) file found in repository's root directory with your own keys and rename it to `.env`.
+
+_Sample keys only works with the [production build](https://postwoman.io)._
+
+#### Browser based development environment
+
+[![Open in Gitpod](https://gitpod.io/button/open-in-gitpod.svg)](https://gitpod.io/#https://github.com/liyasthomas/postwoman)
+
+#### Local development environment
+
+1. [Clone this repo](https://help.github.com/en/articles/cloning-a-repository) with git.
+2. Install dependencies by running `npm install` within the directory that you cloned (probably `postwoman`).
+3. Start the development server with `npm run dev`.
+4. Open development site by going to [`http://localhost:3000`](http://localhost:3000) in your browser.
+
+#### Docker compose
+
+1. [Clone this repo](https://help.github.com/en/articles/cloning-a-repository) with git.
+2. Run `docker-compose up`
+3. Open development site by going to [`http://localhost:3000`](http://localhost:3000) in your browser.
+
+## Docker 🐳 [![Docker Cloud Build Status](https://img.shields.io/docker/cloud/build/liyasthomas/postwoman?logo=Docker)](https://hub.docker.com/r/liyasthomas/postwoman)
+
+```bash
+#pull
+docker pull liyasthomas/postwoman
+
+#run
+docker run -p 3000:3000 liyasthomas/postwoman:latest
+
+#build
+docker build -t postwoman:latest .
 ```
-cd existing_repo
-git remote add origin https://gitlab.com/rafaelneriinfracommerce/postwoman.git
-git branch -M main
-git push -uf origin main
-```
 
-## Integrate with your tools
+## Releasing 🧞
 
-- [ ] [Set up project integrations](https://gitlab.com/-/experiment/new_project_readme_content:eb245805bb11626defe962ac4aebd8b8?https://gitlab.com/rafaelneriinfracommerce/postwoman/-/settings/integrations)
+1. [Clone this repo](https://help.github.com/en/articles/cloning-a-repository) with git.
+2. Install dependencies by running `npm install` within the directory that you cloned (probably `postwoman`).
+3. Build the release files with `npm run build`.
+4. Find the built project in `./dist`.
 
-## Collaborate with your team
+## Contributing 🍰
 
-- [ ] [Invite team members and collaborators](https://gitlab.com/-/experiment/new_project_readme_content:eb245805bb11626defe962ac4aebd8b8?https://docs.gitlab.com/ee/user/project/members/)
-- [ ] [Create a new merge request](https://gitlab.com/-/experiment/new_project_readme_content:eb245805bb11626defe962ac4aebd8b8?https://docs.gitlab.com/ee/user/project/merge_requests/creating_merge_requests.html)
-- [ ] [Automatically close issues from merge requests](https://gitlab.com/-/experiment/new_project_readme_content:eb245805bb11626defe962ac4aebd8b8?https://docs.gitlab.com/ee/user/project/issues/managing_issues.html#closing-issues-automatically)
-- [ ] [Enable merge request approvals](https://gitlab.com/-/experiment/new_project_readme_content:eb245805bb11626defe962ac4aebd8b8?https://docs.gitlab.com/ee/user/project/merge_requests/approvals/)
-- [ ] [Automatically merge when pipeline succeeds](https://gitlab.com/-/experiment/new_project_readme_content:eb245805bb11626defe962ac4aebd8b8?https://docs.gitlab.com/ee/user/project/merge_requests/merge_when_pipeline_succeeds.html)
+Please read [`CONTRIBUTING`](CONTRIBUTING.md) for details on our [`CODE OF CONDUCT`](CODE_OF_CONDUCT.md), and the process for submitting pull requests to us.
 
-## Test and Deploy
+## Continuous Integration 💚 [![Travis Build Status](https://img.shields.io/travis/com/liyasthomas/postwoman?logo=Travis)](https://travis-ci.com/liyasthomas/postwoman)
 
-Use the built-in continuous integration in GitLab.
+We use [Travis CI](https://travis-ci.com) for continuous integration. Check out our [Travis CI Status](https://travis-ci.com/liyasthomas/postwoman).
 
-- [ ] [Get started with GitLab CI/CD](https://gitlab.com/-/experiment/new_project_readme_content:eb245805bb11626defe962ac4aebd8b8?https://docs.gitlab.com/ee/ci/quick_start/index.html)
-- [ ] [Analyze your code for known vulnerabilities with Static Application Security Testing(SAST)](https://gitlab.com/-/experiment/new_project_readme_content:eb245805bb11626defe962ac4aebd8b8?https://docs.gitlab.com/ee/user/application_security/sast/)
-- [ ] [Deploy to Kubernetes, Amazon EC2, or Amazon ECS using Auto Deploy](https://gitlab.com/-/experiment/new_project_readme_content:eb245805bb11626defe962ac4aebd8b8?https://docs.gitlab.com/ee/topics/autodevops/requirements.html)
-- [ ] [Use pull-based deployments for improved Kubernetes management](https://gitlab.com/-/experiment/new_project_readme_content:eb245805bb11626defe962ac4aebd8b8?https://docs.gitlab.com/ee/user/clusters/agent/)
-- [ ] [Set up protected environments](https://gitlab.com/-/experiment/new_project_readme_content:eb245805bb11626defe962ac4aebd8b8?https://docs.gitlab.com/ee/ci/environments/protected_environments.html)
+## Versioning 🔖 [![GitHub release](https://img.shields.io/github/release/liyasthomas/postwoman/all?logo=GitHub)](https://github.com/liyasthomas/postwoman/releases/latest)
 
-***
+This project is developed by [Liyas Thomas](https://github.com/liyasthomas) using the [Semantic Versioning specification](https://semver.org). For the versions available, see the [releases on this repository](https://github.com/liyasthomas/postwoman/releases).
 
-# Editing this README
+## Change log 📝
 
-When you're ready to make this README your own, just edit this file and use the handy template below (or feel free to structure it however you want - this is just a starting point!).  Thank you to [makeareadme.com](https://gitlab.com/-/experiment/new_project_readme_content:eb245805bb11626defe962ac4aebd8b8?https://www.makeareadme.com/) for this template.
+See the [`CHANGELOG`](CHANGELOG.md) file for details.
 
-## Suggestions for a good README
-Every project is different, so consider which of these sections apply to yours. The sections used in the template are suggestions for most open source projects. Also keep in mind that while a README can be too long and detailed, too long is better than too short. If you think your README is too long, consider utilizing another form of documentation rather than cutting out information.
+## Sobre o Projeto 📄
 
-## Name
-Choose a self-explaining name for your project.
+Esse projeto é privativo, de propriedade da Infracommerce.
 
-## Description
-Let people know what your project can do specifically. Provide context and add a link to any reference visitors might be unfamiliar with. A list of Features or a Background subsection can also be added here. If there are alternatives to your project, this is a good place to list differentiating factors.
+É baseado em um antigo projeto opensource (Licença MIT) de mesmo nome.
 
-## Badges
-On some READMEs, you may see small images that convey metadata, such as whether or not all the tests are passing for the project. You can use Shields to add some to your README. Many services also have instructions for adding a badge.
+Foi criado iniciamente por `Rafael Neri`, para atender as necessidades de desenvolvimento do cliente AgroGalaxy.
 
-## Visuals
-Depending on what you are making, it can be a good idea to include screenshots or even a video (you'll frequently see GIFs rather than actual videos). Tools like ttygif can help, but check out Asciinema for a more sophisticated method.
 
-## Installation
-Within a particular ecosystem, there may be a common way of installing things, such as using Yarn, NuGet, or Homebrew. However, consider the possibility that whoever is reading your README is a novice and would like more guidance. Listing specific steps helps remove ambiguity and gets people to using your project as quickly as possible. If it only runs in a specific context like a particular programming language version or operating system or has dependencies that have to be installed manually, also add a Requirements subsection.
-
-## Usage
-Use examples liberally, and show the expected output if you can. It's helpful to have inline the smallest example of usage that you can demonstrate, while providing links to more sophisticated examples if they are too long to reasonably include in the README.
-
-## Support
-Tell people where they can go to for help. It can be any combination of an issue tracker, a chat room, an email address, etc.
-
-## Roadmap
-If you have ideas for releases in the future, it is a good idea to list them in the README.
-
-## Contributing
-State if you are open to contributions and what your requirements are for accepting them.
-
-For people who want to make changes to your project, it's helpful to have some documentation on how to get started. Perhaps there is a script that they should run or some environment variables that they need to set. Make these steps explicit. These instructions could also be useful to your future self.
-
-You can also document commands to lint the code or run tests. These steps help to ensure high code quality and reduce the likelihood that the changes inadvertently break something. Having instructions for running tests is especially helpful if it requires external setup, such as starting a Selenium server for testing in a browser.
-
-## Authors and acknowledgment
-Show your appreciation to those who have contributed to the project.
-
-## License
-For open source projects, say how it is licensed.
-
-## Project status
-If you have run out of energy or time for your project, put a note at the top of the README saying that development has slowed down or stopped completely. Someone may choose to fork your project or volunteer to step in as a maintainer or owner, allowing your project to keep going. You can also make an explicit request for maintainers.
-
+<div align="center">
+  <br>
+  <img src="https://raw.githubusercontent.com/liyasthomas/templates/master/assets/logo.gif" alt="Postwoman.io" width="200">
+  <br>
+  <h3>Happy Coding ❤︎</h3>
+</div>

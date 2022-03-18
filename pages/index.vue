@@ -1,0 +1,2706 @@
+<template>
+  <div class="page">
+    <div class="content">
+      <aside v-if="activeSidebar" class="sticky-inner inner-left">
+        <section>
+          <tabs>
+            <tab :id="'history'" :icon="'watch_later'" :label="'Histórico'" :selected="true">
+              <history @useHistory="handleUseHistory" ref="historyComponent" />
+            </tab>
+
+            <tab :id="'collections'" :icon="'folder_special'" :label="'Coleções'">
+              <collections />
+            </tab>
+
+            <tab :id="'env'" :icon="'style'" :label="'Ambientes'">
+              <environments @use-environment="useSelectedEnvironment($event)" />
+            </tab>
+          </tabs>
+        </section>
+      </aside>
+
+      <div class="page-columns inner-right">
+        <pw-section class="blue" :label="'Requisição'" ref="request">
+          <ul>
+            <li class="shrink">
+              <label for="method">Método</label>
+              <span class="select-wrapper">
+                <v-popover>
+                  <input
+                    id="method"
+                    class="method"
+                    v-if="!customMethod"
+                    v-model="method"
+                    readonly
+                  />
+                  <input v-else v-model="method" placeholder="CUSTOM" />
+                  <template slot="popover">
+                    <div>
+                      <button
+                        class="icon"
+                        @click="
+                          customMethod = false
+                          method = 'GET'
+                        "
+                        v-close-popover
+                      >
+                        GET
+                      </button>
+                    </div>
+                    <div>
+                      <button
+                        class="icon"
+                        @click="
+                          customMethod = false
+                          method = 'HEAD'
+                        "
+                        v-close-popover
+                      >
+                        HEAD
+                      </button>
+                    </div>
+                    <div>
+                      <button
+                        class="icon"
+                        @click="
+                          customMethod = false
+                          method = 'POST'
+                        "
+                        v-close-popover
+                      >
+                        POST
+                      </button>
+                    </div>
+                    <div>
+                      <button
+                        class="icon"
+                        @click="
+                          customMethod = false
+                          method = 'PUT'
+                        "
+                        v-close-popover
+                      >
+                        PUT
+                      </button>
+                    </div>
+                    <div>
+                      <button
+                        class="icon"
+                        @click="
+                          customMethod = false
+                          method = 'DELETE'
+                        "
+                        v-close-popover
+                      >
+                        DELETE
+                      </button>
+                    </div>
+                    <div>
+                      <button
+                        class="icon"
+                        @click="
+                          customMethod = false
+                          method = 'CONNECT'
+                        "
+                        v-close-popover
+                      >
+                        CONNECT
+                      </button>
+                    </div>
+                    <div>
+                      <button
+                        class="icon"
+                        @click="
+                          customMethod = false
+                          method = 'OPTIONS'
+                        "
+                        v-close-popover
+                      >
+                        OPTIONS
+                      </button>
+                    </div>
+                    <div>
+                      <button
+                        class="icon"
+                        @click="
+                          customMethod = false
+                          method = 'TRACE'
+                        "
+                        v-close-popover
+                      >
+                        TRACE
+                      </button>
+                    </div>
+                    <div>
+                      <button
+                        class="icon"
+                        @click="
+                          customMethod = false
+                          method = 'PATCH'
+                        "
+                        v-close-popover
+                      >
+                        PATCH
+                      </button>
+                    </div>
+                    <div>
+                      <button
+                        class="icon"
+                        @click="
+                          customMethod = true
+                          method = 'CUSTOM'
+                        "
+                        v-close-popover
+                      >
+                        CUSTOM
+                      </button>
+                    </div>
+                  </template>
+                </v-popover>
+              </span>
+            </li>
+            <li>
+              <label for="url">URL</label>
+              <input
+                :class="{ error: !isValidURL }"
+                @keyup.enter="isValidURL ? sendRequest() : null"
+                id="url"
+                name="url"
+                type="url"
+                v-model="uri"
+                spellcheck="false"
+                @input="pathInputHandler"
+              />
+            </li>
+            <li class="shrink">
+              <label class="hide-on-small-screen" for="send">&nbsp;</label>
+              <button
+                v-if="!runningRequest"
+                :disabled="!isValidURL"
+                @click="sendRequest"
+                id="send"
+                ref="sendButton"
+              >
+                Enviar
+                <span>
+                  <i class="material-icons">send</i>
+                </span>
+              </button>
+
+              <button v-else @click="cancelRequest" id="send" ref="sendButton">
+                Cancelar
+                <span>
+                  <i class="material-icons">clear</i>
+                </span>
+              </button>
+            </li>
+          </ul>
+          <div class="blue">
+            <label for="label">Rótulo</label>
+            <input id="label" name="label" type="text" v-model="label" :placeholder="'Opcional'" />
+          </div>
+          <div
+            class="blue"
+            label="Request Body"
+            v-if="['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)"
+          >
+            <ul>
+              <li>
+                <label for="contentType">Content-Type</label>
+                <autocomplete
+                  :source="validContentTypes"
+                  :spellcheck="false"
+                  v-model="contentType"
+                />
+              </li>
+            </ul>
+            <ul>
+              <li>
+                <div class="flex-wrap">
+                  <span>
+                    <pw-toggle v-if="canListParameters" :on="rawInput" @change="rawInput = $event">
+                      Raw Input
+                    </pw-toggle>
+                  </span>
+                  <div>
+                    <label for="attachment">
+                      <button
+                        class="icon"
+                        @click="$refs.attachment.click()"
+                        v-tooltip="
+                          files.length === 0 ? 'Enviar Arquivo' : filenames.replace('<br/>', '')
+                        "
+                      >
+                        <i class="material-icons">attach_file</i>
+                        <span>
+                          {{
+                            files.length === 0
+                              ? "No files"
+                              : files.length == 1
+                              ? "1 file"
+                              : files.length + " files"
+                          }}
+                        </span>
+                      </button>
+                    </label>
+                    <input
+                      ref="attachment"
+                      name="attachment"
+                      type="file"
+                      @change="uploadAttachment"
+                      multiple
+                    />
+                    <label for="payload">
+                      <button
+                        class="icon"
+                        @click="$refs.payload.click()"
+                        v-tooltip="'Importar do JSON'"
+                      >
+                        <i class="material-icons">post_add</i>
+                      </button>
+                    </label>
+                    <input ref="payload" name="payload" type="file" @change="uploadPayload" />
+                    <button
+                      class="icon"
+                      ref="prettifyRequest"
+                      @click="prettifyRequestBody"
+                      v-tooltip="'Formatar JSON'"
+                      v-if="rawInput && this.contentType.endsWith('json')"
+                    >
+                      <i class="material-icons">photo_filter</i>
+                    </button>
+                  </div>
+                </div>
+              </li>
+            </ul>
+            <div v-if="!rawInput">
+              <ul>
+                <li>
+                  <div class="flex-wrap">
+                    <label for="reqParamList">Listar de parâmetros</label>
+                    <div>
+                      <button
+                        class="icon"
+                        @click="clearContent('bodyParams', $event)"
+                        v-tooltip.bottom="'Limpar'"
+                      >
+                        <i class="material-icons">clear_all</i>
+                      </button>
+                    </div>
+                  </div>
+                </li>
+              </ul>
+              <ul v-for="(param, index) in bodyParams" :key="index">
+                <li>
+                  <input
+                    :placeholder="'key ' + (index + 1)"
+                    :name="'bparam' + index"
+                    :value="param.key"
+                    @change="
+                      $store.commit('setKeyBodyParams', {
+                        index,
+                        value: $event.target.value,
+                      })
+                    "
+                    @keyup.prevent="setRouteQueryState"
+                    autofocus
+                  />
+                </li>
+                <li>
+                  <input
+                    :placeholder="'value ' + (index + 1)"
+                    :id="'bvalue' + index"
+                    :name="'bvalue' + index"
+                    :value="param.value"
+                    @change="
+                      $store.commit('setValueBodyParams', {
+                        index,
+                        value: $event.target.value,
+                      })
+                    "
+                    @keyup.prevent="setRouteQueryState"
+                  />
+                </li>
+                <div>
+                  <li>
+                    <button
+                      class="icon"
+                      @click="removeRequestBodyParam(index)"
+                      v-tooltip.bottom="'Apagar'"
+                      id="delParam"
+                    >
+                      <i class="material-icons">delete</i>
+                    </button>
+                  </li>
+                </div>
+              </ul>
+              <ul>
+                <li>
+                  <button class="icon" @click="addRequestBodyParam" name="addrequest">
+                    <i class="material-icons">add</i>
+                    <span>Adicionar novo</span>
+                  </button>
+                </li>
+              </ul>
+            </div>
+            <div v-else>
+              <ul>
+                <li>
+                  <div class="flex-wrap">
+                    <label for="rawBody">Raw request body</label>
+                    <div>
+                      <button
+                        class="icon"
+                        @click="clearContent('rawParams', $event)"
+                        v-tooltip.bottom="'Limpar'"
+                      >
+                        <i class="material-icons">clear_all</i>
+                      </button>
+                    </div>
+                  </div>
+                  <Editor
+                    v-model="rawParams"
+                    :lang="rawInputEditorLang"
+                    :options="{
+                      maxLines: '16',
+                      minLines: '8',
+                      fontSize: '16px',
+                      autoScrollEditorIntoView: true,
+                      showPrintMargin: false,
+                      useWorker: false,
+                    }"
+                  />
+                </li>
+              </ul>
+            </div>
+          </div>
+          <div class="flex-wrap">
+            <span>
+              <button
+                class="icon"
+                id="show-modal"
+                @click="showModal = true"
+                v-tooltip.bottom="'Importar cURL'"
+              >
+                <i class="material-icons">import_export</i>
+              </button>
+              <button
+                class="icon"
+                id="code"
+                @click="isHidden = !isHidden"
+                :disabled="!isValidURL"
+                v-tooltip.bottom="{
+                  content: isHidden ? 'Mostrar código' : 'Ocultar código',
+                }"
+              >
+                <i class="material-icons">code</i>
+              </button>
+            </span>
+            <span>
+              <button
+                class="icon"
+                @click="copyRequest"
+                id="copyRequest"
+                ref="copyRequest"
+                :disabled="!isValidURL"
+                v-tooltip.bottom="'Copiar link da requisição'"
+              >
+                <i v-if="navigatorShare" class="material-icons">share</i>
+                <i v-else class="material-icons">content_copy</i>
+              </button>
+              <button
+                class="icon"
+                @click="saveRequest"
+                id="saveRequest"
+                ref="saveRequest"
+                :disabled="!isValidURL"
+                v-tooltip.bottom="'Salvar para coleção'"
+              >
+                <i class="material-icons">create_new_folder</i>
+              </button>
+              <button
+                class="icon"
+                @click="clearContent('', $event)"
+                v-tooltip.bottom="'Limpar tudo'"
+                ref="clearAll"
+              >
+                <i class="material-icons">clear_all</i>
+              </button>
+            </span>
+          </div>
+        </pw-section>
+
+        <section id="options">
+          <tabs>
+            <tab
+              :id="'params'"
+              :label="
+                'Parâmetros' + `${params.length !== 0 ? ' \xA0 • \xA0 ' + params.length : ''}`
+              "
+              :selected="true"
+            >
+              <pw-section class="pink" label="Parameters" ref="parameters">
+                <ul v-if="params.length !== 0">
+                  <li>
+                    <div class="flex-wrap">
+                      <label for="paramList">Lista de parâmetros</label>
+                      <div>
+                        <button
+                          class="icon"
+                          @click="clearContent('parameters', $event)"
+                          v-tooltip.bottom="'Limpar'"
+                        >
+                          <i class="material-icons">clear_all</i>
+                        </button>
+                      </div>
+                    </div>
+                  </li>
+                </ul>
+                <ul v-for="(param, index) in params" :key="index">
+                  <li>
+                    <input
+                      :placeholder="`parâmetro ${index + 1}`"
+                      :name="'param' + index"
+                      :value="param.key"
+                      @change="
+                        $store.commit('setKeyParams', {
+                          index,
+                          value: $event.target.value,
+                        })
+                      "
+                      autofocus
+                    />
+                  </li>
+                  <li>
+                    <input
+                      :placeholder="`valor ${index + 1}`"
+                      :name="'value' + index"
+                      :value="param.value"
+                      @change="
+                        $store.commit('setValueParams', {
+                          index,
+                          value: $event.target.value,
+                        })
+                      "
+                    />
+                  </li>
+                  <li>
+                    <span class="select-wrapper">
+                      <select
+                        :name="'type' + index"
+                        @change="
+                          $store.commit('setTypeParams', {
+                            index,
+                            value: $event.target.value,
+                          })
+                        "
+                      >
+                        <option value="query" :selected="param.type === 'query'">Query</option>
+                        <option value="path" :selected="param.type === 'path'">Path</option>
+                      </select>
+                    </span>
+                  </li>
+                  <div>
+                    <li>
+                      <button
+                        class="icon"
+                        @click="removeRequestParam(index)"
+                        v-tooltip.bottom="'Apagar'"
+                        id="param"
+                      >
+                        <i class="material-icons">delete</i>
+                      </button>
+                    </li>
+                  </div>
+                </ul>
+                <ul>
+                  <li>
+                    <button class="icon" @click="addRequestParam">
+                      <i class="material-icons">add</i>
+                      <span>Adicionar novo</span>
+                    </button>
+                  </li>
+                </ul>
+              </pw-section>
+            </tab>
+
+            <tab :id="'authentication'" :label="'Autenticação'">
+              <pw-section class="cyan" :label="'Autenticação'" ref="authentication">
+                <ul>
+                  <li>
+                    <div class="flex-wrap">
+                      <label for="auth">Autenticação</label>
+                      <div>
+                        <button
+                          class="icon"
+                          @click="clearContent('auth', $event)"
+                          v-tooltip.bottom="'Limpar'"
+                        >
+                          <i class="material-icons">clear_all</i>
+                        </button>
+                      </div>
+                    </div>
+                    <span class="select-wrapper">
+                      <select id="auth" v-model="auth">
+                        <option>None</option>
+                        <option>Basic Auth</option>
+                        <option>Bearer Token</option>
+                        <option>OAuth 2.0</option>
+                      </select>
+                    </span>
+                  </li>
+                </ul>
+                <ul v-if="auth === 'Basic Auth'">
+                  <li>
+                    <input placeholder="User" name="http_basic_user" v-model="httpUser" />
+                  </li>
+                  <li>
+                    <input
+                      placeholder="Password"
+                      name="http_basic_passwd"
+                      :type="passwordFieldType"
+                      v-model="httpPassword"
+                    />
+                  </li>
+                  <div>
+                    <li>
+                      <button
+                        class="icon"
+                        id="switchVisibility"
+                        ref="switchVisibility"
+                        @click="switchVisibility"
+                      >
+                        <i class="material-icons" v-if="passwordFieldType === 'text'">visibility</i>
+                        <i class="material-icons" v-if="passwordFieldType !== 'text'"
+                          >visibility_off</i
+                        >
+                      </button>
+                    </li>
+                  </div>
+                </ul>
+                <ul v-if="auth === 'Bearer Token' || auth === 'OAuth 2.0'">
+                  <li>
+                    <div class="flex-wrap">
+                      <input placeholder="Token" name="bearer_token" v-model="bearerToken" />
+                      <button
+                        v-if="auth === 'OAuth 2.0'"
+                        class="icon"
+                        @click="showTokenList = !showTokenList"
+                        v-tooltip.bottom="'Usar Token armazenado'"
+                      >
+                        <i class="material-icons">open_in_new</i>
+                      </button>
+                      <button
+                        v-if="auth === 'OAuth 2.0'"
+                        class="icon"
+                        @click="showTokenRequest = !showTokenRequest"
+                        v-tooltip.bottom="'Obter novo Token'"
+                      >
+                        <i class="material-icons">vpn_key</i>
+                      </button>
+                    </div>
+                  </li>
+                </ul>
+                <div class="flex-wrap">
+                  <pw-toggle :on="!urlExcludes.auth" @change="setExclude('auth', !$event)">
+                    Incluir no URL
+                  </pw-toggle>
+                </div>
+              </pw-section>
+              <pw-section
+                v-if="showTokenRequest"
+                class="red"
+                label="Access Token Request"
+                ref="accessTokenRequest"
+              >
+                <ul>
+                  <li>
+                    <div class="flex-wrap">
+                      <label for="token-name">Nome do Token</label>
+                      <div>
+                        <button
+                          class="icon"
+                          @click="showTokenRequestList = true"
+                          v-tooltip.bottom="'Gerenciar Token armazenado'"
+                        >
+                          <i class="material-icons">library_add</i>
+                        </button>
+                        <button
+                          class="icon"
+                          @click="clearContent('access_token', $event)"
+                          v-tooltip.bottom="'Limpar'"
+                        >
+                          <i class="material-icons">clear_all</i>
+                        </button>
+                        <button
+                          class="icon"
+                          @click="showTokenRequest = false"
+                          v-tooltip.bottom="'Fechar'"
+                        >
+                          <i class="material-icons">close</i>
+                        </button>
+                      </div>
+                    </div>
+                    <input
+                      id="token-name"
+                      :placeholder="'Opcional'"
+                      name="token_name"
+                      v-model="accessTokenName"
+                      type="text"
+                    />
+                  </li>
+                </ul>
+                <ul>
+                  <li>
+                    <label for="oidc-discovery-url"> OIDC Discovery URL </label>
+                    <input
+                      :disabled="this.authUrl !== '' || this.accessTokenUrl !== ''"
+                      id="oidc-discovery-url"
+                      name="oidc_discovery_url"
+                      type="url"
+                      v-model="oidcDiscoveryUrl"
+                      placeholder="https://example.com/.well-known/openid-configuration"
+                    />
+                  </li>
+                </ul>
+                <ul>
+                  <li>
+                    <label for="auth-url">URL de autenticação</label>
+                    <input
+                      :disabled="this.oidcDiscoveryUrl !== ''"
+                      id="auth-url"
+                      name="auth_url"
+                      type="url"
+                      v-model="authUrl"
+                      placeholder="https://example.com/login/oauth/authorize"
+                    />
+                  </li>
+                </ul>
+                <ul>
+                  <li>
+                    <label for="access-token-url"> URL do Token de acesso </label>
+                    <input
+                      :disabled="this.oidcDiscoveryUrl !== ''"
+                      id="access-token-url"
+                      name="access_token_url"
+                      type="url"
+                      v-model="accessTokenUrl"
+                      placeholder="https://example.com/login/oauth/access_token"
+                    />
+                  </li>
+                </ul>
+                <ul>
+                  <li>
+                    <label for="client-id">ID do Cliente</label>
+                    <input
+                      id="client-id"
+                      name="client_id"
+                      type="text"
+                      v-model="clientId"
+                      placeholder="Client ID"
+                    />
+                  </li>
+                </ul>
+                <ul>
+                  <li>
+                    <label for="scope">Scope</label>
+                    <input
+                      id="scope"
+                      name="scope"
+                      type="text"
+                      v-model="scope"
+                      placeholder="e.g. read:org"
+                    />
+                  </li>
+                </ul>
+                <ul>
+                  <li>
+                    <button class="icon" @click="handleAccessTokenRequest">
+                      <i class="material-icons">vpn_key</i>
+                      <span>{Token da requisição</span>
+                    </button>
+                  </li>
+                </ul>
+              </pw-section>
+            </tab>
+
+            <tab
+              :id="'headers'"
+              :label="
+                'Cabeçalho' + `${headers.length !== 0 ? ' \xA0 • \xA0 ' + headers.length : ''}`
+              "
+            >
+              <pw-section class="orange" label="Headers" ref="headers">
+                <ul v-if="headers.length !== 0">
+                  <li>
+                    <div class="flex-wrap">
+                      <label for="headerList">Itens do cabeçalho</label>
+                      <div>
+                        <button
+                          class="icon"
+                          @click="clearContent('headers', $event)"
+                          v-tooltip.bottom="'Limpar'"
+                        >
+                          <i class="material-icons">clear_all</i>
+                        </button>
+                      </div>
+                    </div>
+                  </li>
+                </ul>
+                <ul v-for="(header, index) in headers" :key="`${header.value}_${index}`">
+                  <li>
+                    <autocomplete
+                      :placeholder="`${index + 1} itens de cabeçalho`"
+                      :source="commonHeaders"
+                      :spellcheck="false"
+                      :value="header.key"
+                      @input="
+                        $store.commit('setKeyHeader', {
+                          index,
+                          value: $event,
+                        })
+                      "
+                      @keyup.prevent="setRouteQueryState"
+                      autofocus
+                    />
+                  </li>
+                  <li>
+                    <input
+                      :placeholder="`valor ${index + 1}`"
+                      :name="'value' + index"
+                      :value="header.value"
+                      @change="
+                        $store.commit('setValueHeader', {
+                          index,
+                          value: $event.target.value,
+                        })
+                      "
+                      @keyup.prevent="setRouteQueryState"
+                    />
+                  </li>
+                  <div>
+                    <li>
+                      <button
+                        class="icon"
+                        @click="removeRequestHeader(index)"
+                        v-tooltip.bottom="'Apagar'"
+                        id="header"
+                      >
+                        <i class="material-icons">delete</i>
+                      </button>
+                    </li>
+                  </div>
+                </ul>
+                <ul>
+                  <li>
+                    <button class="icon" @click="addRequestHeader">
+                      <i class="material-icons">add</i>
+                      <span>Adicionar novo</span>
+                    </button>
+                  </li>
+                </ul>
+              </pw-section>
+            </tab>
+
+            <tab :id="'pre_request_script'" :label="'Script Pré-Requisição'">
+              <pw-section
+                v-if="showPreRequestScript"
+                class="orange"
+                :label="'Script Pré-Requisição'"
+                ref="preRequest"
+              >
+                <ul>
+                  <li>
+                    <div class="flex-wrap">
+                      <label for="generatedCode">Código Javascript</label>
+                      <div>
+                        <a
+                          href="https://github.com/liyasthomas/postwoman/wiki/Pre-Request-Scripts"
+                          target="_blank"
+                          rel="noopener"
+                        >
+                          <button class="icon" v-tooltip="'Wiki'">
+                            <i class="material-icons">help_outline</i>
+                          </button>
+                        </a>
+                      </div>
+                    </div>
+                    <Editor
+                      v-model="preRequestScript"
+                      :lang="'javascript'"
+                      :options="{
+                        maxLines: '16',
+                        minLines: '8',
+                        fontSize: '16px',
+                        autoScrollEditorIntoView: true,
+                        showPrintMargin: false,
+                        useWorker: false,
+                      }"
+                    />
+                  </li>
+                </ul>
+              </pw-section>
+            </tab>
+
+            <tab
+              :id="'tests'"
+              :label="
+                'Testes' + `${testReports.length !== 0 ? ' \xA0 • \xA0 ' + testReports.length : ''}`
+              "
+            >
+              <pw-section
+                v-if="testsEnabled"
+                class="orange"
+                :label="'Testes'"
+                ref="postRequestTests"
+              >
+                <ul>
+                  <li>
+                    <div class="flex-wrap">
+                      <label for="generatedCode">Código Javascript</label>
+                      <div>
+                        <a
+                          href="https://github.com/liyasthomas/postwoman/wiki/Post-Requests-Tests"
+                          target="_blank"
+                          rel="noopener"
+                        >
+                          <button class="icon" v-tooltip="'Wiki'">
+                            <i class="material-icons">help_outline</i>
+                          </button>
+                        </a>
+                      </div>
+                    </div>
+                    <Editor
+                      v-model="testScript"
+                      :lang="'javascript'"
+                      :options="{
+                        maxLines: '16',
+                        minLines: '8',
+                        fontSize: '16px',
+                        autoScrollEditorIntoView: true,
+                        showPrintMargin: false,
+                        useWorker: false,
+                      }"
+                    />
+                    <div v-if="testReports.length !== 0">
+                      <div class="flex-wrap">
+                        <label>Test Reports</label>
+                        <div>
+                          <button
+                            class="icon"
+                            @click="clearContent('tests', $event)"
+                            v-tooltip.bottom="'Limpar'"
+                          >
+                            <i class="material-icons">clear_all</i>
+                          </button>
+                        </div>
+                      </div>
+                      <div v-for="(testReport, index) in testReports" :key="index">
+                        <div v-if="testReport.startBlock" class="info">
+                          <h4>{{ testReport.startBlock }}</h4>
+                        </div>
+                        <p v-else-if="testReport.result" class="flex-wrap info">
+                          <span :class="testReport.styles.class">
+                            <i class="material-icons">
+                              {{ testReport.styles.icon }}
+                            </i>
+                            <span>&nbsp; {{ testReport.result }}</span>
+                            <span v-if="testReport.message">
+                              <label>&nbsp; • &nbsp; {{ testReport.message }}</label>
+                            </span>
+                          </span>
+                        </p>
+                        <div v-else-if="testReport.endBlock"><hr /></div>
+                      </div>
+                    </div>
+                  </li>
+                </ul>
+              </pw-section>
+            </tab>
+          </tabs>
+        </section>
+
+        <pw-section class="purple" id="response" :label="'Resposta'" ref="response">
+          <ul>
+            <li>
+              <label for="status">Status</label>
+              <input
+                :class="statusCategory ? statusCategory.className : ''"
+                :value="response.status || '(aguardando o envio da requisição)'"
+                ref="status"
+                id="status"
+                name="status"
+                readonly
+                type="text"
+              />
+            </li>
+          </ul>
+          <div v-if="response.body && response.body !== 'Carregando'">
+            <response-renderer :response="response" />
+          </div>
+        </pw-section>
+      </div>
+
+      <save-request-as
+        :show="showRequestModal"
+        @hide-model="hideRequestModal"
+        :editing-request="editRequest"
+      />
+
+      <pw-modal v-if="showModal" @close="showModal = false">
+        <div slot="header">
+          <ul>
+            <li>
+              <div class="flex-wrap">
+                <h3 class="title">Importar cURL</h3>
+                <div>
+                  <button class="icon" @click="showModal = false">
+                    <i class="material-icons">close</i>
+                  </button>
+                </div>
+              </div>
+            </li>
+          </ul>
+        </div>
+        <div slot="body">
+          <ul>
+            <li>
+              <textarea
+                id="import-text"
+                autofocus
+                rows="8"
+                :placeholder="'Inserir cURL'"
+              ></textarea>
+            </li>
+          </ul>
+        </div>
+        <div slot="footer">
+          <div class="flex-wrap">
+            <span></span>
+            <span>
+              <button class="icon" @click="showModal = false">Cancelar</button>
+              <button class="icon primary" @click="handleImport">Importar</button>
+            </span>
+          </div>
+        </div>
+      </pw-modal>
+
+      <pw-modal v-if="!isHidden" @close="isHidden = true">
+        <div slot="header">
+          <ul>
+            <li>
+              <div class="flex-wrap">
+                <h3 class="title">Gerar código</h3>
+                <div>
+                  <button class="icon" @click="isHidden = true">
+                    <i class="material-icons">close</i>
+                  </button>
+                </div>
+              </div>
+            </li>
+          </ul>
+        </div>
+        <div slot="body">
+          <ul>
+            <li>
+              <label for="requestType">Tipo de requisição</label>
+              <span class="select-wrapper">
+                <select id="requestType" v-model="requestType">
+                  <option>JavaScript XHR</option>
+                  <option>Fetch</option>
+                  <option>cURL</option>
+                </select>
+              </span>
+            </li>
+          </ul>
+          <ul>
+            <li>
+              <div class="flex-wrap">
+                <label for="generatedCode">Código gerado</label>
+                <div>
+                  <button
+                    class="icon"
+                    @click="copyRequestCode"
+                    id="copyRequestCode"
+                    ref="copyRequestCode"
+                    v-tooltip="'Copiar código'"
+                  >
+                    <i class="material-icons">content_copy</i>
+                  </button>
+                </div>
+              </div>
+              <textarea
+                id="generatedCode"
+                ref="generatedCode"
+                name="generatedCode"
+                rows="8"
+                v-model="requestCode"
+              ></textarea>
+            </li>
+          </ul>
+        </div>
+        <div slot="footer"></div>
+      </pw-modal>
+
+      <pw-modal v-if="showTokenList" @close="showTokenList = false">
+        <div slot="header">
+          <ul>
+            <li>
+              <div class="flex-wrap">
+                <h3 class="title">Gerenciar Tokens de acesso</h3>
+                <div>
+                  <button class="icon" @click="showTokenList = false">
+                    <i class="material-icons">close</i>
+                  </button>
+                </div>
+              </div>
+            </li>
+          </ul>
+        </div>
+        <div slot="body">
+          <ul>
+            <li>
+              <div class="flex-wrap">
+                <label for="token-list">Lista de Token</label>
+                <div v-if="tokens.length != 0">
+                  <button
+                    class="icon"
+                    @click="clearContent('tokens', $event)"
+                    v-tooltip.bottom="'Limpar'"
+                  >
+                    <i class="material-icons">clear_all</i>
+                  </button>
+                </div>
+              </div>
+            </li>
+          </ul>
+          <ul id="token-list" v-for="(token, index) in tokens" :key="index">
+            <li>
+              <input
+                :placeholder="'name ' + (index + 1)"
+                :value="token.name"
+                @change="
+                  $store.commit('setOAuthTokenName', {
+                    index,
+                    value: $event.target.value,
+                  })
+                "
+              />
+            </li>
+            <li>
+              <input :value="token.value" readonly />
+            </li>
+            <div class="flex-wrap">
+              <li>
+                <button
+                  class="icon"
+                  @click="useOAuthToken(token.value)"
+                  v-tooltip.bottom="'Usar Token guardo'"
+                >
+                  <i class="material-icons">input</i>
+                </button>
+              </li>
+              <li>
+                <button class="icon" @click="removeOAuthToken(index)" v-tooltip.bottom="'Apagar'">
+                  <i class="material-icons">delete</i>
+                </button>
+              </li>
+            </div>
+          </ul>
+          <p v-if="tokens.length === 0" class="info">Vazio</p>
+        </div>
+        <div slot="footer"></div>
+      </pw-modal>
+
+      <pw-modal v-if="showTokenRequestList" @close="showTokenRequestList = false">
+        <div slot="header">
+          <ul>
+            <li>
+              <div class="flex-wrap">
+                <h3 class="title">Gerenciar Token da requisição</h3>
+                <div>
+                  <button class="icon" @click="showTokenRequestList = false">
+                    <i class="material-icons">close</i>
+                  </button>
+                </div>
+              </div>
+            </li>
+          </ul>
+        </div>
+        <div slot="body">
+          <ul>
+            <li>
+              <div class="flex-wrap">
+                <label for="token-req-list">Lista de Tokens da requisição</label>
+                <div>
+                  <button
+                    :disabled="this.tokenReqs.length === 0"
+                    class="icon"
+                    @click="showTokenRequestList = false"
+                    v-tooltip.bottom="'Usar Token da requisição'"
+                  >
+                    <i class="material-icons">input</i>
+                  </button>
+                  <button
+                    :disabled="this.tokenReqs.length === 0"
+                    class="icon"
+                    @click="removeOAuthTokenReq"
+                    v-tooltip.bottom="'Apagar'"
+                  >
+                    <i class="material-icons">delete</i>
+                  </button>
+                </div>
+              </div>
+              <span class="select-wrapper">
+                <select
+                  id="token-req-list"
+                  v-model="tokenReqSelect"
+                  :disabled="this.tokenReqs.length === 0"
+                  @change="tokenReqChange($event)"
+                >
+                  <option v-for="(req, index) in tokenReqs" :key="index" :value="req.name">
+                    {{ req.name }}
+                  </option>
+                </select>
+              </span>
+            </li>
+          </ul>
+          <ul>
+            <li>
+              <label for="token-req-name">Nome da requisição</label>
+              <input v-model="tokenReqName" />
+            </li>
+          </ul>
+          <ul>
+            <li>
+              <label for="token-req-details"> Detalhes da requisição </label>
+              <textarea
+                id="token-req-details"
+                readonly
+                rows="7"
+                v-model="tokenReqDetails"
+              ></textarea>
+            </li>
+          </ul>
+        </div>
+        <div slot="footer">
+          <div class="flex-wrap">
+            <span></span>
+            <span>
+              <button class="icon primary" @click="addOAuthTokenReq">
+                Salvar Token da requisição
+              </button>
+            </span>
+          </div>
+        </div>
+      </pw-modal>
+    </div>
+  </div>
+</template>
+
+<script>
+import section from "~/components/layout/section"
+import url from "url"
+import querystring from "querystring"
+import { commonHeaders } from "~/helpers/headers"
+import parseCurlCommand from "~/assets/js/curlparser.js"
+import getEnvironmentVariablesFromScript from "~/helpers/preRequest"
+import runTestScriptWithVariables from "~/helpers/postwomanTesting"
+import parseTemplateString from "~/helpers/templating"
+import AceEditor from "~/components/ui/ace-editor"
+import { tokenRequest, oauthRedirect } from "~/assets/js/oauth"
+import { cancelRunningRequest, sendNetworkRequest } from "~/helpers/network"
+import { fb } from "~/helpers/fb"
+import { getEditorLangForMimeType } from "~/helpers/editorutils"
+import { hasPathParams, addPathParamsToVariables, getQueryParams } from "~/helpers/requestParams.js"
+import { parseUrlAndPath } from "~/helpers/utils/uri.js"
+import { httpValid } from "~/helpers/utils/valid"
+import { knownContentTypes, isJSONContentType } from "~/helpers/utils/contenttypes"
+
+const statusCategories = [
+  {
+    name: "informational",
+    statusCodeRegex: new RegExp(/[1][0-9]+/),
+    className: "info-response",
+  },
+  {
+    name: "successful",
+    statusCodeRegex: new RegExp(/[2][0-9]+/),
+    className: "success-response",
+  },
+  {
+    name: "redirection",
+    statusCodeRegex: new RegExp(/[3][0-9]+/),
+    className: "redir-response",
+  },
+  {
+    name: "client error",
+    statusCodeRegex: new RegExp(/[4][0-9]+/),
+    className: "cl-error-response",
+  },
+  {
+    name: "server error",
+    statusCodeRegex: new RegExp(/[5][0-9]+/),
+    className: "sv-error-response",
+  },
+  {
+    // this object is a catch-all for when no other objects match and should always be last
+    name: "unknown",
+    statusCodeRegex: new RegExp(/.*/),
+    className: "missing-data-response",
+  },
+]
+const parseHeaders = (xhr) => {
+  const headers = xhr
+    .getAllResponseHeaders()
+    .trim()
+    .split(/[\r\n]+/)
+  const headerMap = {}
+  headers.forEach((line) => {
+    const parts = line.split(": ")
+    const header = parts.shift().toLowerCase()
+    const value = parts.join(": ")
+    headerMap[header] = value
+  })
+  return headerMap
+}
+export const findStatusGroup = (responseStatus) =>
+  statusCategories.find(({ statusCodeRegex }) => statusCodeRegex.test(responseStatus))
+export default {
+  components: {
+    "pw-section": section,
+    "pw-toggle": () => import("~/components/ui/toggle"),
+    "pw-modal": () => import("~/components/ui/modal"),
+    autocomplete: () => import("~/components/ui/autocomplete"),
+    history: () => import("~/components/layout/history"),
+    collections: () => import("~/components/collections"),
+    saveRequestAs: () => import("~/components/collections/saveRequestAs"),
+    Editor: AceEditor,
+    environments: () => import("~/components/environments"),
+    inputform: () => import("~/components/firebase/inputform"),
+    tabs: () => import("~/components/ui/tabs"),
+    tab: () => import("~/components/ui/tab"),
+    "response-renderer": () => import("~/components/lenses/ResponseBodyRenderer"),
+  },
+  data() {
+    return {
+      showModal: false,
+      showPreRequestScript: true,
+      testsEnabled: true,
+      testScript: "// pw.expect('variable').toBe('value');",
+      preRequestScript: "// pw.env.set('variable', 'value');",
+      testReports: [],
+      copyButton: '<i class="material-icons">content_copy</i>',
+      downloadButton: '<i class="material-icons">save_alt</i>',
+      doneButton: '<i class="material-icons">done</i>',
+      isHidden: true,
+      response: {
+        status: "",
+        headers: "",
+        body: "",
+      },
+      validContentTypes: knownContentTypes,
+      paramsWatchEnabled: true,
+      showTokenList: false,
+      showTokenRequest: false,
+      showTokenRequestList: false,
+      commonHeaders,
+      showRequestModal: false,
+      editRequest: {},
+      urlExcludes: {},
+      activeSidebar: true,
+      fb,
+      customMethod: false,
+      files: [],
+      filenames: "",
+      navigatorShare: navigator.share,
+      runningRequest: false,
+
+      settings: {
+        SCROLL_INTO_ENABLED:
+          typeof this.$store.state.postwoman.settings.SCROLL_INTO_ENABLED !== "undefined"
+            ? this.$store.state.postwoman.settings.SCROLL_INTO_ENABLED
+            : true,
+      },
+    }
+  },
+  watch: {
+    urlExcludes: {
+      deep: true,
+      handler() {
+        this.$store.commit("postwoman/applySetting", [
+          "URL_EXCLUDES",
+          Object.assign({}, this.urlExcludes),
+        ])
+      },
+    },
+    canListParameters: {
+      immediate: true,
+      handler(canListParameters) {
+        if (canListParameters) {
+          this.$nextTick(() => {
+            this.rawInput = Boolean(this.rawParams && this.rawParams !== "{}")
+          })
+        } else {
+          this.rawInput = true
+        }
+      },
+    },
+    contentType(contentType, oldContentType) {
+      const getDefaultParams = (contentType) => {
+        if (isJSONContentType(contentType)) return "{}"
+
+        switch (contentType) {
+          case "application/xml":
+            return "<?xml version='1.0' encoding='utf-8'?>"
+          case "text/html":
+            return "<!doctype html>"
+        }
+        return ""
+      }
+      if (!this.rawParams || this.rawParams === getDefaultParams(oldContentType)) {
+        this.rawParams = getDefaultParams(contentType)
+      }
+      this.setRouteQueryState()
+    },
+    params: {
+      handler: function (newValue) {
+        if (!this.paramsWatchEnabled) {
+          this.paramsWatchEnabled = true
+          return
+        }
+        let path = this.path
+        let queryString = getQueryParams(newValue)
+          .map(({ key, value }) => `${key}=${value}`)
+          .join("&")
+        queryString = queryString === "" ? "" : `?${queryString}`
+        if (path.includes("?")) {
+          path = path.slice(0, path.indexOf("?")) + queryString
+        } else {
+          path = path + queryString
+        }
+        this.path = path
+        this.setRouteQueryState()
+      },
+      deep: true,
+    },
+    selectedRequest(newValue, oldValue) {
+      // @TODO: Convert all variables to single request variable
+      if (!newValue) return
+      this.uri = newValue.url + newValue.path
+      this.url = newValue.url
+      this.path = newValue.path
+      this.method = newValue.method
+      this.auth = newValue.auth
+      this.httpUser = newValue.httpUser
+      this.httpPassword = newValue.httpPassword
+      this.passwordFieldType = newValue.passwordFieldType
+      this.bearerToken = newValue.bearerToken
+      this.headers = newValue.headers
+      this.params = newValue.params
+      this.bodyParams = newValue.bodyParams
+      this.rawParams = newValue.rawParams
+      this.rawInput = newValue.rawInput
+      this.contentType = newValue.contentType
+      this.requestType = newValue.requestType
+      if (newValue.preRequestScript) {
+        this.showPreRequestScript = true
+        this.preRequestScript = newValue.preRequestScript
+      }
+      if (newValue.testScript) {
+        this.testsEnabled = true
+        this.testScript = newValue.testScript
+      }
+      this.label = newValue.label
+    },
+    editingRequest(newValue) {
+      this.editRequest = newValue
+      this.showRequestModal = true
+    },
+    method() {
+      this.contentType = ["POST", "PUT", "PATCH", "DELETE"].includes(this.method)
+        ? "application/json"
+        : ""
+    },
+    preRequestScript: function (val, oldVal) {
+      this.uri = this.uri
+    },
+  },
+  computed: {
+    /**
+     * Check content types that can be automatically
+     * serialized by postwoman.
+     */
+    canListParameters() {
+      return (
+        this.contentType === "application/x-www-form-urlencoded" ||
+        isJSONContentType(this.contentType)
+      )
+    },
+    uri: {
+      get() {
+        return this.$store.state.request.uri ? this.$store.state.request.uri : this.url + this.path
+      },
+      set(value) {
+        this.$store.commit("setState", { value, attribute: "uri" })
+        let url = value
+        if ((this.preRequestScript && this.showPreRequestScript) || hasPathParams(this.params)) {
+          let environmentVariables = getEnvironmentVariablesFromScript(this.preRequestScript)
+          environmentVariables = addPathParamsToVariables(this.params, environmentVariables)
+          url = parseTemplateString(value, environmentVariables)
+        }
+        let result = parseUrlAndPath(url)
+        this.url = result.url
+        this.path = result.path
+      },
+    },
+    url: {
+      get() {
+        return this.$store.state.request.url
+      },
+      set(value) {
+        this.$store.commit("setState", { value, attribute: "url" })
+      },
+    },
+    method: {
+      get() {
+        return this.$store.state.request.method
+      },
+      set(value) {
+        this.$store.commit("setState", { value, attribute: "method" })
+      },
+    },
+    path: {
+      get() {
+        return this.$store.state.request.path
+      },
+      set(value) {
+        this.$store.commit("setState", { value, attribute: "path" })
+      },
+    },
+    label: {
+      get() {
+        return this.$store.state.request.label
+      },
+      set(value) {
+        this.$store.commit("setState", { value, attribute: "label" })
+      },
+    },
+    auth: {
+      get() {
+        return this.$store.state.request.auth
+      },
+      set(value) {
+        this.$store.commit("setState", { value, attribute: "auth" })
+      },
+    },
+    httpUser: {
+      get() {
+        return this.$store.state.request.httpUser
+      },
+      set(value) {
+        this.$store.commit("setState", { value, attribute: "httpUser" })
+      },
+    },
+    httpPassword: {
+      get() {
+        return this.$store.state.request.httpPassword
+      },
+      set(value) {
+        this.$store.commit("setState", { value, attribute: "httpPassword" })
+      },
+    },
+    bearerToken: {
+      get() {
+        return this.$store.state.request.bearerToken
+      },
+      set(value) {
+        this.$store.commit("setState", { value, attribute: "bearerToken" })
+      },
+    },
+    tokens: {
+      get() {
+        return this.$store.state.oauth2.tokens
+      },
+      set(value) {
+        this.$store.commit("setOAuth2", { value, attribute: "tokens" })
+      },
+    },
+    tokenReqs: {
+      get() {
+        return this.$store.state.oauth2.tokenReqs
+      },
+      set(value) {
+        this.$store.commit("setOAuth2", { value, attribute: "tokenReqs" })
+      },
+    },
+    tokenReqSelect: {
+      get() {
+        return this.$store.state.oauth2.tokenReqSelect
+      },
+      set(value) {
+        this.$store.commit("setOAuth2", { value, attribute: "tokenReqSelect" })
+      },
+    },
+    tokenReqName: {
+      get() {
+        return this.$store.state.oauth2.tokenReqName
+      },
+      set(value) {
+        this.$store.commit("setOAuth2", { value, attribute: "tokenReqName" })
+      },
+    },
+    accessTokenName: {
+      get() {
+        return this.$store.state.oauth2.accessTokenName
+      },
+      set(value) {
+        this.$store.commit("setOAuth2", {
+          value,
+          attribute: "accessTokenName",
+        })
+      },
+    },
+    oidcDiscoveryUrl: {
+      get() {
+        return this.$store.state.oauth2.oidcDiscoveryUrl
+      },
+      set(value) {
+        this.$store.commit("setOAuth2", {
+          value,
+          attribute: "oidcDiscoveryUrl",
+        })
+      },
+    },
+    authUrl: {
+      get() {
+        return this.$store.state.oauth2.authUrl
+      },
+      set(value) {
+        this.$store.commit("setOAuth2", { value, attribute: "authUrl" })
+      },
+    },
+    accessTokenUrl: {
+      get() {
+        return this.$store.state.oauth2.accessTokenUrl
+      },
+      set(value) {
+        this.$store.commit("setOAuth2", { value, attribute: "accessTokenUrl" })
+      },
+    },
+    clientId: {
+      get() {
+        return this.$store.state.oauth2.clientId
+      },
+      set(value) {
+        this.$store.commit("setOAuth2", { value, attribute: "clientId" })
+      },
+    },
+    scope: {
+      get() {
+        return this.$store.state.oauth2.scope
+      },
+      set(value) {
+        this.$store.commit("setOAuth2", { value, attribute: "scope" })
+      },
+    },
+    state: {
+      get() {
+        return this.$store.state.oauth2.state
+      },
+      set(value) {
+        this.$store.commit("setOAuth2", { value, attribute: "state" })
+      },
+    },
+    headers: {
+      get() {
+        return this.$store.state.request.headers
+      },
+      set(value) {
+        this.$store.commit("setState", { value, attribute: "headers" })
+      },
+    },
+    params: {
+      get() {
+        return this.$store.state.request.params
+      },
+      set(value) {
+        this.$store.commit("setState", { value, attribute: "params" })
+      },
+    },
+    bodyParams: {
+      get() {
+        return this.$store.state.request.bodyParams
+      },
+      set(value) {
+        this.$store.commit("setState", { value, attribute: "bodyParams" })
+      },
+    },
+    rawParams: {
+      get() {
+        return this.$store.state.request.rawParams
+      },
+      set(value) {
+        this.$store.commit("setState", { value, attribute: "rawParams" })
+      },
+    },
+    rawInput: {
+      get() {
+        return this.$store.state.request.rawInput
+      },
+      set(value) {
+        this.$store.commit("setState", { value, attribute: "rawInput" })
+      },
+    },
+    rawInputEditorLang() {
+      return getEditorLangForMimeType(this.contentType)
+    },
+    requestType: {
+      get() {
+        return this.$store.state.request.requestType
+      },
+      set(value) {
+        this.$store.commit("setState", { value, attribute: "requestType" })
+      },
+    },
+    contentType: {
+      get() {
+        return this.$store.state.request.contentType
+      },
+      set(value) {
+        this.$store.commit("setState", { value, attribute: "contentType" })
+      },
+    },
+    passwordFieldType: {
+      get() {
+        return this.$store.state.request.passwordFieldType
+      },
+      set(value) {
+        this.$store.commit("setState", {
+          value,
+          attribute: "passwordFieldType",
+        })
+      },
+    },
+    selectedRequest() {
+      return this.$store.state.postwoman.selectedRequest
+    },
+    editingRequest() {
+      return this.$store.state.postwoman.editingRequest
+    },
+    requestName() {
+      return this.label
+    },
+    statusCategory() {
+      return findStatusGroup(this.response.status)
+    },
+    isValidURL() {
+      // if showPreRequestScript, we cannot determine if a URL is valid because the full string is not known ahead of time
+      return this.showPreRequestScript || httpValid(this.url)
+    },
+    hasRequestBody() {
+      return ["POST", "PUT", "PATCH", "DELETE"].includes(this.method)
+    },
+    pathName() {
+      return this.path.match(/^([^?]*)\??/)[1]
+    },
+    rawRequestBody() {
+      const { bodyParams, contentType } = this
+      if (isJSONContentType(contentType)) {
+        try {
+          const obj = JSON.parse(
+            `{${bodyParams
+              .filter(({ key }) => !!key)
+              .map(
+                ({ key, value }) => `
+              "${key}": "${value}"
+              `
+              )
+              .join()}}`
+          )
+          return JSON.stringify(obj, null, 2)
+        } catch (ex) {
+          console.log(ex)
+          this.$toast.clear()
+          this.$toast.error(
+            "Parameter value must be a string, switch to Raw input for other formats",
+            {
+              icon: "error",
+            }
+          )
+          return "invalid"
+        }
+      } else {
+        return bodyParams
+          .filter(({ key }) => !!key)
+          .map(({ key, value }) => `${key}=${encodeURIComponent(value)}`)
+          .join("&")
+      }
+    },
+    headerString() {
+      const result = this.headers
+        .filter(({ key }) => !!key)
+        .map(({ key, value }) => `${key}: ${value}`)
+        .join(",\n")
+      return result === "" ? "" : `${result}`
+    },
+    queryString() {
+      const result = getQueryParams(this.params)
+        .map(({ key, value }) => `${key}=${encodeURIComponent(value)}`)
+        .join("&")
+      return result === "" ? "" : `?${result}`
+    },
+    responseType() {
+      return (this.response.headers["content-type"] || "").split(";")[0].toLowerCase()
+    },
+    requestCode() {
+      if (this.requestType === "JavaScript XHR") {
+        const requestString = []
+        requestString.push("const xhr = new XMLHttpRequest()")
+        const user = this.auth === "Basic Auth" ? `'${this.httpUser}'` : null
+        const password = this.auth === "Basic Auth" ? `'${this.httpPassword}'` : null
+        requestString.push(
+          `xhr.open('${this.method}', '${this.url}${this.pathName}${this.queryString}', true, ${user}, ${password})`
+        )
+        if (this.auth === "Bearer Token" || this.auth === "OAuth 2.0") {
+          requestString.push(`xhr.setRequestHeader('Authorization', 'Bearer ${this.bearerToken}')`)
+        }
+        if (this.headers) {
+          this.headers.forEach(({ key, value }) => {
+            if (key) requestString.push(`xhr.setRequestHeader('${key}', '${value}')`)
+          })
+        }
+        if (["POST", "PUT", "PATCH", "DELETE"].includes(this.method)) {
+          let requestBody = this.rawInput ? this.rawParams : this.rawRequestBody
+          if (isJSONContentType(this.contentType)) {
+            requestBody = `JSON.stringify(${requestBody})`
+          } else if (this.contentType.includes("x-www-form-urlencoded")) {
+            requestBody = `"${requestBody}"`
+          }
+          requestString.push(
+            `xhr.setRequestHeader('Content-Type', '${this.contentType}; charset=utf-8')`
+          )
+          requestString.push(`xhr.send(${requestBody})`)
+        } else {
+          requestString.push("xhr.send()")
+        }
+        return requestString.join("\n")
+      } else if (this.requestType === "Fetch") {
+        const requestString = []
+        let headers = []
+        requestString.push(`fetch("${this.url}${this.pathName}${this.queryString}", {\n`)
+        requestString.push(`  method: "${this.method}",\n`)
+        if (this.auth === "Basic Auth") {
+          const basic = `${this.httpUser}:${this.httpPassword}`
+          headers.push(
+            `    "Authorization": "Basic ${window.btoa(unescape(encodeURIComponent(basic)))}",\n`
+          )
+        } else if (this.auth === "Bearer Token" || this.auth === "OAuth 2.0") {
+          headers.push(`    "Authorization": "Bearer ${this.bearerToken}",\n`)
+        }
+        if (["POST", "PUT", "PATCH", "DELETE"].includes(this.method)) {
+          let requestBody = this.rawInput ? this.rawParams : this.rawRequestBody
+          if (isJSONContentType(this.contentType)) {
+            requestBody = `JSON.stringify(${requestBody})`
+          } else if (this.contentType.includes("x-www-form-urlencoded")) {
+            requestBody = `"${requestBody}"`
+          }
+
+          requestString.push(`  body: ${requestBody},\n`)
+          headers.push(`    "Content-Type": "${this.contentType}; charset=utf-8",\n`)
+        }
+        if (this.headers) {
+          this.headers.forEach(({ key, value }) => {
+            if (key) headers.push(`    "${key}": "${value}",\n`)
+          })
+        }
+        headers = headers.join("").slice(0, -2)
+        requestString.push(`  headers: {\n${headers}\n  },\n`)
+        requestString.push('  credentials: "same-origin"\n')
+        requestString.push("}).then(function(response) {\n")
+        requestString.push("  response.status\n")
+        requestString.push("  response.statusText\n")
+        requestString.push("  response.headers\n")
+        requestString.push("  response.url\n\n")
+        requestString.push("  return response.text()\n")
+        requestString.push("}).catch(function(error) {\n")
+        requestString.push("  error.message\n")
+        requestString.push("})")
+        return requestString.join("")
+      } else if (this.requestType === "cURL") {
+        const requestString = []
+        requestString.push(`curl -X ${this.method}`)
+        requestString.push(`  '${this.url}${this.pathName}${this.queryString}'`)
+        if (this.auth === "Basic Auth") {
+          const basic = `${this.httpUser}:${this.httpPassword}`
+          requestString.push(
+            `  -H 'Authorization: Basic ${window.btoa(unescape(encodeURIComponent(basic)))}'`
+          )
+        } else if (this.auth === "Bearer Token" || this.auth === "OAuth 2.0") {
+          requestString.push(`  -H 'Authorization: Bearer ${this.bearerToken}'`)
+        }
+        if (this.headers) {
+          this.headers.forEach(({ key, value }) => {
+            if (key) requestString.push(`  -H '${key}: ${value}'`)
+          })
+        }
+        if (["POST", "PUT", "PATCH", "DELETE"].includes(this.method)) {
+          const requestBody = this.rawInput ? this.rawParams : this.rawRequestBody
+          requestString.push(`  -H 'Content-Type: ${this.contentType}; charset=utf-8'`)
+          requestString.push(`  -d '${requestBody}'`)
+        }
+        return requestString.join(" \\\n")
+      }
+    },
+    tokenReqDetails() {
+      const details = {
+        oidcDiscoveryUrl: this.oidcDiscoveryUrl,
+        authUrl: this.authUrl,
+        accessTokenUrl: this.accessTokenUrl,
+        clientId: this.clientId,
+        scope: this.scope,
+      }
+      return JSON.stringify(details, null, 2)
+    },
+  },
+  methods: {
+    useSelectedEnvironment(environment) {
+      let preRequestScriptString = ""
+      for (let variable of environment.variables) {
+        preRequestScriptString =
+          preRequestScriptString + `pw.env.set('${variable.key}', '${variable.value}');\n`
+      }
+      this.preRequestScript = preRequestScriptString
+      this.showPreRequestScript = true
+    },
+    checkCollections() {
+      const checkCollectionAvailability =
+        this.$store.state.postwoman.collections &&
+        this.$store.state.postwoman.collections.length > 0
+      return checkCollectionAvailability
+    },
+    scrollInto(view) {
+      this.$refs[view].$el.scrollIntoView({
+        behavior: "smooth",
+      })
+    },
+    handleUseHistory(entry) {
+      this.label = entry.label
+      this.method = entry.method
+      this.uri = entry.url + entry.path
+      this.url = entry.url
+      this.path = entry.path
+      this.showPreRequestScript = entry.usesPreScripts
+      this.preRequestScript = entry.preRequestScript
+      this.auth = entry.auth
+      this.httpUser = entry.httpUser
+      this.httpPassword = entry.httpPassword
+      this.bearerToken = entry.bearerToken
+      this.headers = entry.headers
+      this.params = entry.params
+      this.bodyParams = entry.bodyParams
+      this.rawParams = entry.rawParams
+      this.rawInput = entry.rawInput
+      this.contentType = entry.contentType
+      this.requestType = entry.requestType
+      this.testScript = entry.testScript
+      this.testsEnabled = entry.usesPostScripts
+      if (this.settings.SCROLL_INTO_ENABLED) this.scrollInto("request")
+    },
+    getVariablesFromPreRequestScript() {
+      if (!this.preRequestScript) {
+        return {}
+      }
+      return getEnvironmentVariablesFromScript(this.preRequestScript)
+    },
+    async makeRequest(auth, headers, requestBody, preRequestScript) {
+      const requestOptions = {
+        method: this.method,
+        url: this.url + this.pathName + this.queryString,
+        auth,
+        headers,
+        data: requestBody,
+        credentials: true,
+      }
+
+      if (preRequestScript || hasPathParams(this.params)) {
+        let environmentVariables = getEnvironmentVariablesFromScript(preRequestScript)
+        environmentVariables = addPathParamsToVariables(this.params, environmentVariables)
+        requestOptions.url = parseTemplateString(requestOptions.url, environmentVariables)
+        requestOptions.data = parseTemplateString(requestOptions.data, environmentVariables)
+        for (let k in requestOptions.headers) {
+          const kParsed = parseTemplateString(k, environmentVariables)
+          const valParsed = parseTemplateString(requestOptions.headers[k], environmentVariables)
+          delete requestOptions.headers[k]
+          requestOptions.headers[kParsed] = valParsed
+        }
+      }
+      if (typeof requestOptions.data === "string") {
+        requestOptions.data = parseTemplateString(requestOptions.data)
+      }
+      return await sendNetworkRequest(requestOptions, this.$store)
+    },
+    cancelRequest() {
+      cancelRunningRequest(this.$store)
+    },
+    async sendRequest() {
+      this.$toast.clear()
+      if (this.settings.SCROLL_INTO_ENABLED) this.scrollInto("response")
+      if (!this.isValidURL) {
+        this.$toast.error("A URL não está formatada corretamente", {
+          icon: "error",
+        })
+        return
+      }
+      // Start showing the loading bar as soon as possible.
+      // The nuxt axios module will hide it when the request is made.
+      this.$nuxt.$loading.start()
+      this.previewEnabled = false
+      this.response.status = "Carregando"
+      this.response.body = "Carregando"
+      const auth =
+        this.auth === "Basic Auth"
+          ? {
+              username: this.httpUser,
+              password: this.httpPassword,
+            }
+          : null
+      let headers = {}
+      let headersObject = {}
+      Object.keys(headers).forEach((id) => {
+        if (headers[id].key) headersObject[headers[id].key] = headers[id].value
+      })
+      headers = headersObject
+      // If the request has a body, we want to ensure Content-Type is sent.
+      let requestBody
+      if (this.hasRequestBody) {
+        requestBody = this.rawInput ? this.rawParams : this.rawRequestBody
+        Object.assign(headers, {
+          "Content-Type": `${this.contentType}; charset=utf-8`,
+        })
+      }
+      requestBody = requestBody ? requestBody.toString() : null
+      if (this.files.length !== 0) {
+        const formData = new FormData()
+        for (let i = 0; i < this.files.length; i++) {
+          let file = this.files[i]
+          formData.append(i, file)
+        }
+        formData.append("data", requestBody)
+        requestBody = formData
+      }
+      // If the request uses a token for auth, we want to make sure it's sent here.
+      if (this.auth === "Bearer Token" || this.auth === "OAuth 2.0")
+        headers["Authorization"] = `Bearer ${this.bearerToken}`
+      headers = Object.assign(
+        // Clone the app headers object first, we don't want to
+        // mutate it with the request headers added by default.
+        Object.assign({}, this.headers)
+        // We make our temporary headers object the source so
+        // that you can override the added headers if you
+        // specify them.
+        // headers
+      )
+      Object.keys(headers).forEach((id) => {
+        if (headers[id].key) headersObject[headers[id].key] = headers[id].value
+      })
+      headers = headersObject
+      try {
+        const startTime = Date.now()
+
+        this.runningRequest = true
+        const payload = await this.makeRequest(
+          auth,
+          headers,
+          requestBody,
+          this.showPreRequestScript && this.preRequestScript
+        )
+        this.runningRequest = false
+
+        const duration = Date.now() - startTime
+        this.$toast.info(
+          "Concluído em {duration}ms",
+          { duration },
+          {
+            icon: "done",
+          }
+        )
+        ;(() => {
+          const status = (this.response.status = payload.status)
+          const headers = (this.response.headers = payload.headers)
+          // We don't need to bother parsing JSON, axios already handles it for us!
+          const body = (this.response.body = payload.data)
+          // Addition of an entry to the history component.
+          const entry = {
+            label: this.requestName,
+            status,
+            date: new Date().toLocaleDateString(),
+            time: new Date().toLocaleTimeString(),
+            method: this.method,
+            url: this.url,
+            path: this.path,
+            usesPreScripts: this.showPreRequestScript,
+            preRequestScript: this.preRequestScript,
+            duration,
+            star: false,
+            auth: this.auth,
+            httpUser: this.httpUser,
+            httpPassword: this.httpPassword,
+            bearerToken: this.bearerToken,
+            headers: this.headers,
+            params: this.params,
+            bodyParams: this.bodyParams,
+            rawParams: this.rawParams,
+            rawInput: this.rawInput,
+            contentType: this.contentType,
+            requestType: this.requestType,
+            testScript: this.testScript,
+            usesPostScripts: this.testsEnabled,
+          }
+
+          if ((this.preRequestScript && this.showPreRequestScript) || hasPathParams(this.params)) {
+            let environmentVariables = getEnvironmentVariablesFromScript(this.preRequestScript)
+            environmentVariables = addPathParamsToVariables(this.params, environmentVariables)
+            entry.path = parseTemplateString(entry.path, environmentVariables)
+            entry.url = parseTemplateString(entry.url, environmentVariables)
+          }
+
+          this.$refs.historyComponent.addEntry(entry)
+          if (fb.currentUser !== null) {
+            if (fb.currentSettings[2].value) {
+              fb.writeHistory(entry)
+            }
+          }
+        })()
+      } catch (error) {
+        this.runningRequest = false
+
+        // If the error is caused by cancellation, do nothing
+        if (error === "cancellation") {
+          this.response.status = "Cancelado"
+          this.response.body = "Cancelado"
+        } else {
+          console.log(error)
+          if (error.response) {
+            this.response.headers = error.response.headers
+            this.response.status = error.response.status
+            this.response.body = error.response.data
+            // Addition of an entry to the history component.
+            const entry = {
+              label: this.requestName,
+              status: this.response.status,
+              date: new Date().toLocaleDateString(),
+              time: new Date().toLocaleTimeString(),
+              method: this.method,
+              url: this.url,
+              path: this.path,
+              usesPreScripts: this.showPreRequestScript,
+              preRequestScript: this.preRequestScript,
+              star: false,
+              auth: this.auth,
+              httpUser: this.httpUser,
+              httpPassword: this.httpPassword,
+              bearerToken: this.bearerToken,
+              headers: this.headers,
+              params: this.params,
+              bodyParams: this.bodyParams,
+              rawParams: this.rawParams,
+              rawInput: this.rawInput,
+              contentType: this.contentType,
+              requestType: this.requestType,
+              testScript: this.testScript,
+              usesPostScripts: this.testsEnabled,
+            }
+
+            if (
+              (this.preRequestScript && this.showPreRequestScript) ||
+              hasPathParams(this.params)
+            ) {
+              let environmentVariables = getEnvironmentVariablesFromScript(this.preRequestScript)
+              environmentVariables = addPathParamsToVariables(this.params, environmentVariables)
+              entry.path = parseTemplateString(entry.path, environmentVariables)
+              entry.url = parseTemplateString(entry.url, environmentVariables)
+            }
+
+            this.$refs.historyComponent.addEntry(entry)
+            if (fb.currentUser !== null) {
+              if (fb.currentSettings[2].value) {
+                fb.writeHistory(entry)
+              }
+            }
+            return
+          } else {
+            this.response.status = error.message
+            this.response.body = `${error}. Verifique o console para mais detalhes.`
+            this.$toast.error(`${error} (F12 para detalhes)`, {
+              icon: "error",
+            })
+            if (!this.$store.state.postwoman.settings.PROXY_ENABLED) {
+              this.$toast.info("Tente habilitar o Proxy", {
+                icon: "help",
+                duration: 8000,
+                action: {
+                  text: "Sim",
+                  onClick: (e, toastObject) => {
+                    this.$router.push({ path: "/settings" })
+                  },
+                },
+              })
+            }
+          }
+        }
+      }
+      // tests
+      const syntheticResponse = {
+        status: this.response.status,
+        body: this.response.body,
+        headers: this.response.headers,
+      }
+      const { testResults } = runTestScriptWithVariables(this.testScript, {
+        response: syntheticResponse,
+      })
+      this.testReports = testResults
+    },
+    getQueryStringFromPath() {
+      let queryString
+      const pathParsed = url.parse(this.uri)
+      return (queryString = pathParsed.query ? pathParsed.query : "")
+    },
+    queryStringToArray(queryString) {
+      const queryParsed = querystring.parse(queryString)
+      return Object.keys(queryParsed).map((key) => ({
+        key,
+        value: queryParsed[key],
+      }))
+    },
+    pathInputHandler() {
+      if (this.uri.includes("?")) {
+        const queryString = this.getQueryStringFromPath()
+        const params = this.queryStringToArray(queryString)
+        this.paramsWatchEnabled = false
+        this.params = params
+      }
+    },
+    addRequestHeader() {
+      this.$store.commit("addHeaders", {
+        key: "",
+        value: "",
+      })
+      return false
+    },
+    removeRequestHeader(index) {
+      // .slice() gives us an entirely new array rather than giving us just the reference
+      const oldHeaders = this.headers.slice()
+      this.$store.commit("removeHeaders", index)
+      this.$toast.error("Deletado", {
+        icon: "delete",
+        action: {
+          text: "Desfazer",
+          onClick: (e, toastObject) => {
+            this.headers = oldHeaders
+            toastObject.remove()
+          },
+        },
+      })
+    },
+    addRequestParam() {
+      this.$store.commit("addParams", { key: "", value: "", type: "query" })
+      return false
+    },
+    removeRequestParam(index) {
+      // .slice() gives us an entirely new array rather than giving us just the reference
+      const oldParams = this.params.slice()
+      this.$store.commit("removeParams", index)
+      this.$toast.error("Apagado", {
+        icon: "delete",
+        action: {
+          text: "Desfazer",
+          onClick: (e, toastObject) => {
+            this.params = oldParams
+            toastObject.remove()
+          },
+        },
+      })
+    },
+    addRequestBodyParam() {
+      this.$store.commit("addBodyParams", { key: "", value: "" })
+      return false
+    },
+    removeRequestBodyParam(index) {
+      // .slice() gives us an entirely new array rather than giving us just the reference
+      const oldBodyParams = this.bodyParams.slice()
+      this.$store.commit("removeBodyParams", index)
+      this.$toast.error("Apagado", {
+        icon: "delete",
+        action: {
+          text: "Desfazer",
+          onClick: (e, toastObject) => {
+            this.bodyParams = oldBodyParams
+            toastObject.remove()
+          },
+        },
+      })
+    },
+    prettifyRequestBody() {
+      try {
+        const jsonObj = JSON.parse(this.rawParams)
+        this.rawParams = JSON.stringify(jsonObj, null, 2)
+        let oldIcon = this.$refs.prettifyRequest.innerHTML
+        this.$refs.prettifyRequest.innerHTML = this.doneButton
+        setTimeout(() => (this.$refs.prettifyRequest.innerHTML = oldIcon), 1000)
+      } catch (e) {
+        this.$toast.error(
+          "Não é possível formatar um json inválido, corrija a sintaxe e tente novamente",
+          {
+            icon: "error",
+          }
+        )
+      }
+    },
+    copyRequest() {
+      if (navigator.share) {
+        const time = new Date().toLocaleTimeString()
+        const date = new Date().toLocaleDateString()
+        navigator
+          .share({
+            title: "Postwoman",
+            text: `Postwoman • API request builder at ${time} on ${date}`,
+            url: window.location.href,
+          })
+          .then(() => {})
+          .catch(() => {})
+      } else {
+        const dummy = document.createElement("input")
+        document.body.appendChild(dummy)
+        dummy.value = window.location.href
+        dummy.select()
+        document.execCommand("copy")
+        document.body.removeChild(dummy)
+        this.$refs.copyRequest.innerHTML = this.doneButton
+        this.$toast.info("Copiado para a área de transferência", {
+          icon: "done",
+        })
+        setTimeout(() => (this.$refs.copyRequest.innerHTML = this.copyButton), 1000)
+      }
+    },
+    copyRequestCode() {
+      this.$refs.copyRequestCode.innerHTML = this.doneButton
+      this.$toast.success("Copiado para a área de transferência", {
+        icon: "done",
+      })
+      this.$refs.generatedCode.select()
+      document.execCommand("copy")
+      setTimeout(() => (this.$refs.copyRequestCode.innerHTML = this.copyButton), 1000)
+    },
+    setRouteQueryState() {
+      const flat = (key) => (this[key] !== "" ? `${key}=${this[key]}&` : "")
+      const deep = (key) => {
+        const haveItems = [...this[key]].length
+        if (haveItems && this[key]["value"] !== "") {
+          return `${key}=${JSON.stringify(this[key])}&`
+        }
+        return ""
+      }
+      let flats = [
+        "method",
+        "url",
+        "path",
+        !this.urlExcludes.auth ? "auth" : null,
+        !this.urlExcludes.httpUser ? "httpUser" : null,
+        !this.urlExcludes.httpPassword ? "httpPassword" : null,
+        !this.urlExcludes.bearerToken ? "bearerToken" : null,
+        "contentType",
+      ]
+        .filter((item) => item !== null)
+        .map((item) => flat(item))
+      const deeps = ["headers", "params"].map((item) => deep(item))
+      const bodyParams = this.rawInput ? [flat("rawParams")] : [deep("bodyParams")]
+      history.replaceState(
+        window.location.href,
+        "",
+        `/?${encodeURI(flats.concat(deeps, bodyParams).join("").slice(0, -1))}`
+      )
+    },
+    setRouteQueries(queries) {
+      if (typeof queries !== "object") throw new Error("Route query parameters must be a Object")
+      for (const key in queries) {
+        if (["headers", "params", "bodyParams"].includes(key))
+          this[key] = JSON.parse(decodeURI(queries[key]))
+        if (key === "rawParams") {
+          this.rawInput = true
+          this.rawParams = queries["rawParams"]
+        } else if (typeof this[key] === "string") {
+          this[key] = queries[key]
+        }
+      }
+    },
+    observeRequestButton() {
+      const requestElement = this.$refs.request.$el
+      const sendButtonElement = this.$refs.sendButton
+      const observer = new IntersectionObserver(
+        (entries, observer) => {
+          entries.forEach(({ isIntersecting }) => {
+            if (isIntersecting) sendButtonElement.classList.remove("show")
+            // The button should float when it is no longer visible on screen.
+            // This is done by adding the show class to the button.
+            else sendButtonElement.classList.add("show")
+          })
+        },
+        {
+          rootMargin: "0px",
+          threshold: [0],
+        }
+      )
+      observer.observe(requestElement)
+    },
+    handleImport() {
+      const { value: text } = document.getElementById("import-text")
+      try {
+        const parsedCurl = parseCurlCommand(text)
+        const { origin, pathname } = new URL(parsedCurl.url.replace(/"/g, "").replace(/'/g, ""))
+        this.url = origin
+        this.path = pathname
+        this.headers = []
+        if (parsedCurl.headers) {
+          for (const key of Object.keys(parsedCurl.headers)) {
+            this.$store.commit("addHeaders", {
+              key,
+              value: parsedCurl.headers[key],
+            })
+          }
+        }
+        this.method = parsedCurl.method.toUpperCase()
+        if (parsedCurl["data"]) {
+          this.rawInput = true
+          this.rawParams = parsedCurl["data"]
+        }
+        this.showModal = false
+      } catch (error) {
+        this.showModal = false
+        this.$toast.error("cURL não está formatada corretamente", {
+          icon: "error",
+        })
+      }
+    },
+    switchVisibility() {
+      this.passwordFieldType = this.passwordFieldType === "password" ? "text" : "password"
+    },
+    clearContent(name, { target }) {
+      switch (name) {
+        case "bodyParams":
+          this.bodyParams = []
+          break
+        case "rawParams":
+          this.rawParams = "{}"
+          break
+        case "parameters":
+          this.params = []
+          break
+        case "auth":
+          this.auth = "None"
+          this.httpUser = ""
+          this.httpPassword = ""
+          this.bearerToken = ""
+          this.showTokenRequest = false
+          this.tokens = []
+          this.tokenReqs = []
+          break
+        case "access_token":
+          this.accessTokenName = ""
+          this.oidcDiscoveryUrl = ""
+          this.authUrl = ""
+          this.accessTokenUrl = ""
+          this.clientId = ""
+          this.scope = ""
+          break
+        case "headers":
+          this.headers = []
+          break
+        case "tests":
+          this.testReports = []
+          break
+        case "tokens":
+          this.tokens = []
+          break
+        default:
+          this.method = "GET"
+          this.url = "https://httpbin.org"
+          this.path = "/get"
+          this.uri = this.url + this.path
+          this.label = ""
+          this.bodyParams = []
+          this.rawParams = "{}"
+          this.files = []
+          this.params = []
+          this.auth = "None"
+          this.httpUser = ""
+          this.httpPassword = ""
+          this.bearerToken = ""
+          this.showTokenRequest = false
+          this.tokens = []
+          this.tokenReqs = []
+          this.accessTokenName = ""
+          this.oidcDiscoveryUrl = ""
+          this.authUrl = ""
+          this.accessTokenUrl = ""
+          this.clientId = ""
+          this.scope = ""
+          this.headers = []
+          this.testReports = []
+      }
+      target.innerHTML = this.doneButton
+      this.$toast.info("Limpo", {
+        icon: "clear_all",
+      })
+      setTimeout(() => (target.innerHTML = '<i class="material-icons">clear_all</i>'), 1000)
+    },
+    saveRequest() {
+      if (!this.checkCollections()) {
+        this.$toast.error("Criar uma coleção", {
+          icon: "error",
+        })
+        return
+      }
+      let urlAndPath = parseUrlAndPath(this.uri)
+      this.editRequest = {
+        url: urlAndPath.url,
+        path: urlAndPath.path,
+        method: this.method,
+        auth: this.auth,
+        httpUser: this.httpUser,
+        httpPassword: this.httpPassword,
+        passwordFieldType: this.passwordFieldType,
+        bearerToken: this.bearerToken,
+        headers: this.headers,
+        params: this.params,
+        bodyParams: this.bodyParams,
+        rawParams: this.rawParams,
+        rawInput: this.rawInput,
+        contentType: this.contentType,
+        requestType: this.requestType,
+        preRequestScript: this.showPreRequestScript == true ? this.preRequestScript : null,
+        testScript: this.testsEnabled == true ? this.testScript : null,
+        label: this.requestName,
+      }
+      if (this.selectedRequest.url) {
+        this.editRequest = Object.assign({}, this.selectedRequest, this.editRequest)
+      }
+      this.showRequestModal = true
+    },
+    hideRequestModal() {
+      this.showRequestModal = false
+      this.editRequest = {}
+    },
+    setExclude(excludedField, excluded) {
+      if (excludedField === "auth") {
+        this.urlExcludes.auth = excluded
+        this.urlExcludes.httpUser = excluded
+        this.urlExcludes.httpPassword = excluded
+        this.urlExcludes.bearerToken = excluded
+      } else {
+        this.urlExcludes[excludedField] = excluded
+      }
+      this.setRouteQueryState()
+    },
+    uploadAttachment() {
+      this.filenames = ""
+      this.files = this.$refs.attachment.files
+      if (this.files.length !== 0) {
+        for (let file of this.files) {
+          this.filenames = `${this.filenames}<br/>${file.name}`
+        }
+        this.$toast.info("Arquivo importado", {
+          icon: "attach_file",
+        })
+      } else {
+        this.$toast.error("Escolher um arquivo", {
+          icon: "attach_file",
+        })
+      }
+    },
+    uploadPayload() {
+      this.rawInput = true
+      const file = this.$refs.payload.files[0]
+      if (file !== undefined && file !== null) {
+        const reader = new FileReader()
+        reader.onload = ({ target }) => {
+          this.rawParams = target.result
+        }
+        reader.readAsText(file)
+        this.$toast.info("Arquivo importado", {
+          icon: "attach_file",
+        })
+      } else {
+        this.$toast.error("Escolher arquivo", {
+          icon: "attach_file",
+        })
+      }
+    },
+    async handleAccessTokenRequest() {
+      if (this.oidcDiscoveryUrl === "" && (this.authUrl === "" || this.accessTokenUrl === "")) {
+        this.$toast.error("Por favor complete a configuração dos URLs.", {
+          icon: "error",
+        })
+        return
+      }
+      try {
+        const tokenReqParams = {
+          grantType: "code",
+          oidcDiscoveryUrl: this.oidcDiscoveryUrl,
+          authUrl: this.authUrl,
+          accessTokenUrl: this.accessTokenUrl,
+          clientId: this.clientId,
+          scope: this.scope,
+        }
+        await tokenRequest(tokenReqParams)
+      } catch (e) {
+        this.$toast.error(e, {
+          icon: "code",
+        })
+      }
+    },
+    async oauthRedirectReq() {
+      const tokenInfo = await oauthRedirect()
+      if (tokenInfo.hasOwnProperty("access_token")) {
+        this.bearerToken = tokenInfo.access_token
+        this.addOAuthToken({
+          name: this.accessTokenName,
+          value: tokenInfo.access_token,
+        })
+      }
+    },
+    addOAuthToken({ name, value }) {
+      this.$store.commit("addOAuthToken", {
+        name,
+        value,
+      })
+      return false
+    },
+    removeOAuthToken(index) {
+      const oldTokens = this.tokens.slice()
+      this.$store.commit("removeOAuthToken", index)
+      this.$toast.error("Apagado", {
+        icon: "delete",
+        action: {
+          text: "Desfazer",
+          onClick: (e, toastObject) => {
+            this.tokens = oldTokens
+            toastObject.remove()
+          },
+        },
+      })
+    },
+    useOAuthToken(value) {
+      this.bearerToken = value
+      this.showTokenList = false
+    },
+    addOAuthTokenReq() {
+      try {
+        const name = this.tokenReqName
+        const details = JSON.parse(this.tokenReqDetails)
+        this.$store.commit("addOAuthTokenReq", {
+          name,
+          details,
+        })
+        this.$toast.info("Token da requisição foi salvo")
+        this.showTokenRequestList = false
+      } catch (e) {
+        this.$toast.error(e, {
+          icon: "code",
+        })
+      }
+    },
+    removeOAuthTokenReq(index) {
+      const oldTokenReqs = this.tokenReqs.slice()
+      const targetReqIndex = this.tokenReqs.findIndex(({ name }) => name === this.tokenReqName)
+      if (targetReqIndex < 0) return
+      this.$store.commit("removeOAuthTokenReq", targetReqIndex)
+      this.$toast.error("Apagado", {
+        icon: "delete",
+        action: {
+          text: "Desfazer",
+          onClick: (e, toastObject) => {
+            this.tokenReqs = oldTokenReqs
+            toastObject.remove()
+          },
+        },
+      })
+    },
+    tokenReqChange({ target }) {
+      const { details, name } = this.tokenReqs.find(({ name }) => name === target.value)
+      const { oidcDiscoveryUrl, authUrl, accessTokenUrl, clientId, scope } = details
+      this.tokenReqName = name
+      this.oidcDiscoveryUrl = oidcDiscoveryUrl
+      this.authUrl = authUrl
+      this.accessTokenUrl = accessTokenUrl
+      this.clientId = clientId
+      this.scope = scope
+    },
+  },
+  async mounted() {
+    this.observeRequestButton()
+    this._keyListener = function (e) {
+      if (e.key === "g" && (e.ctrlKey || e.metaKey)) {
+        e.preventDefault()
+        if (!this.runningRequest) {
+          this.sendRequest()
+        } else {
+          this.cancelRequest()
+        }
+      } else if (e.key === "s" && (e.ctrlKey || e.metaKey)) {
+        e.preventDefault()
+        this.saveRequest()
+      } else if (e.key === "k" && (e.ctrlKey || e.metaKey)) {
+        e.preventDefault()
+        this.copyRequest()
+      } else if (e.key === "j" && (e.ctrlKey || e.metaKey)) {
+        e.preventDefault()
+        this.$refs.clearAll.click()
+      } else if (e.key === "Escape") {
+        e.preventDefault()
+        this.showModal =
+          this.showTokenList =
+          this.showTokenRequestList =
+          this.showRequestModal =
+            false
+        this.isHidden = true
+      }
+    }
+    document.addEventListener("keydown", this._keyListener.bind(this))
+    await this.oauthRedirectReq()
+  },
+  created() {
+    this.urlExcludes = this.$store.state.postwoman.settings.URL_EXCLUDES || {
+      // Exclude authentication by default for security reasons.
+      auth: true,
+      httpUser: true,
+      httpPassword: true,
+      bearerToken: true,
+    }
+    if (Object.keys(this.$route.query).length) this.setRouteQueries(this.$route.query)
+    this.$watch(
+      (vm) => [
+        vm.label,
+        vm.method,
+        vm.url,
+        vm.auth,
+        vm.path,
+        vm.httpUser,
+        vm.httpPassword,
+        vm.bearerToken,
+        vm.headers,
+        vm.params,
+        vm.bodyParams,
+        vm.contentType,
+        vm.rawParams,
+      ],
+      (val) => {
+        this.setRouteQueryState()
+      }
+    )
+  },
+  beforeDestroy() {
+    document.removeEventListener("keydown", this._keyListener)
+  },
+}
+</script>

@@ -1,0 +1,216 @@
+<template>
+  <div class="page">
+    <pw-section class="blue" label="Requisição" ref="request">
+      <ul>
+        <li>
+          <label for="websocket-url">URL</label>
+          <input
+            id="websocket-url"
+            type="url"
+            spellcheck="false"
+            :class="{ error: !urlValid }"
+            v-model="url"
+            @keyup.enter="urlValid ? toggleConnection() : null"
+          />
+        </li>
+        <div>
+          <li>
+            <label for="connect" class="hide-on-small-screen">&nbsp;</label>
+            <button :disabled="!urlValid" id="connect" name="connect" @click="toggleConnection">
+              {{ !connectionState ? "Conectar" : "Desconectar" }}
+              <span>
+                <i class="material-icons">
+                  {{ !connectionState ? "sync" : "sync_disabled" }}
+                </i>
+              </span>
+            </button>
+          </li>
+        </div>
+      </ul>
+    </pw-section>
+
+    <pw-section class="purple" label="Comunicação" id="response" ref="response">
+      <ul>
+        <li>
+          <realtime-log title="Log" :log="communication.log" />
+        </li>
+      </ul>
+      <ul>
+        <li>
+          <label for="websocket-message">Mensagem</label>
+          <input
+            id="websocket-message"
+            name="message"
+            type="text"
+            v-model="communication.input"
+            :readonly="!connectionState"
+            @keyup.enter="connectionState ? sendMessage() : null"
+            @keyup.up="connectionState ? walkHistory('up') : null"
+            @keyup.down="connectionState ? walkHistory('down') : null"
+          />
+        </li>
+        <div>
+          <li>
+            <label for="send" class="hide-on-small-screen">&nbsp;</label>
+            <button id="send" name="send" :disabled="!connectionState" @click="sendMessage">
+              Enviar
+              <span>
+                <i class="material-icons">send</i>
+              </span>
+            </button>
+          </li>
+        </div>
+      </ul>
+    </pw-section>
+  </div>
+</template>
+
+<script>
+import { wsValid } from "~/helpers/utils/valid"
+
+export default {
+  components: {
+    "pw-section": () => import("../layout/section"),
+    realtimeLog: () => import("./log"),
+  },
+  data() {
+    return {
+      connectionState: false,
+      url: "wss://echo.websocket.org",
+      socket: null,
+      communication: {
+        log: null,
+        input: "",
+      },
+      currentIndex: -1, //index of the message log array to put in input box
+    }
+  },
+  computed: {
+    urlValid() {
+      return wsValid(this.url)
+    },
+  },
+  methods: {
+    toggleConnection() {
+      // If it is connecting:
+      if (!this.connectionState) return this.connect()
+      // Otherwise, it's disconnecting.
+      else return this.disconnect()
+    },
+    connect() {
+      this.communication.log = [
+        {
+          payload: `Conectantando à ${this.url}...`,
+          source: "info",
+          color: "var(--ac-color)",
+        },
+      ]
+      try {
+        this.socket = new WebSocket(this.url)
+        this.socket.onopen = (event) => {
+          this.connectionState = true
+          this.communication.log = [
+            {
+              payload: `Conectando à ${this.url}...`,
+              source: "info",
+              color: "var(--ac-color)",
+              ts: new Date().toLocaleTimeString(),
+            },
+          ]
+          this.$toast.success("Conectado", {
+            icon: "sync",
+          })
+        }
+        this.socket.onerror = (event) => {
+          this.handleError()
+        }
+        this.socket.onclose = (event) => {
+          this.connectionState = false
+          this.communication.log.push({
+            payload: `Desconectado de ${this.url}`,
+            source: "info",
+            color: "#ff5555",
+            ts: new Date().toLocaleTimeString(),
+          })
+          this.$toast.error("Desconectado", {
+            icon: "sync_disabled",
+          })
+        }
+        this.socket.onmessage = ({ data }) => {
+          this.communication.log.push({
+            payload: data,
+            source: "server",
+            ts: new Date().toLocaleTimeString(),
+          })
+        }
+      } catch (ex) {
+        this.handleError(ex)
+        this.$toast.error("Ocorreu um erro", {
+          icon: "error",
+        })
+      }
+    },
+    disconnect() {
+      this.socket.close()
+    },
+    handleError(error) {
+      this.disconnect()
+      this.connectionState = false
+      this.communication.log.push({
+        payload: "Ocorreu um erro",
+        source: "info",
+        color: "#ff5555",
+        ts: new Date().toLocaleTimeString(),
+      })
+      if (error !== null)
+        this.communication.log.push({
+          payload: error,
+          source: "info",
+          color: "#ff5555",
+          ts: new Date().toLocaleTimeString(),
+        })
+    },
+    sendMessage() {
+      const message = this.communication.input
+      this.socket.send(message)
+      this.communication.log.push({
+        payload: message,
+        source: "client",
+        ts: new Date().toLocaleTimeString(),
+      })
+      this.communication.input = ""
+    },
+    walkHistory(direction) {
+      const clientMessages = this.communication.log.filter(({ source }) => source === "client")
+      const length = clientMessages.length
+      switch (direction) {
+        case "up":
+          if (length > 0 && this.currentIndex !== 0) {
+            //does nothing if message log is empty or the currentIndex is 0 when up arrow is pressed
+            if (this.currentIndex === -1) {
+              this.currentIndex = length - 1
+              this.communication.input = clientMessages[this.currentIndex].payload
+            } else if (this.currentIndex === 0) {
+              this.communication.input = clientMessages[0].payload
+            } else if (this.currentIndex > 0) {
+              this.currentIndex = this.currentIndex - 1
+              this.communication.input = clientMessages[this.currentIndex].payload
+            }
+          }
+          break
+        case "down":
+          if (length > 0 && this.currentIndex > -1) {
+            if (this.currentIndex === length - 1) {
+              this.currentIndex = -1
+              this.communication.input = ""
+            } else if (this.currentIndex < length - 1) {
+              this.currentIndex = this.currentIndex + 1
+              this.communication.input = clientMessages[this.currentIndex].payload
+            }
+          }
+          break
+      }
+    },
+  },
+}
+</script>
